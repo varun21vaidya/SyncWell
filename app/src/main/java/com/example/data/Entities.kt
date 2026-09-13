@@ -10,7 +10,7 @@ data class AppSettings(
     @PrimaryKey val id: String,
     val firebaseUid: String?,
     val defaultWaterMl: Int = 4000,
-    val themeMode: String = "light",
+    val themeMode: String = "dark",
     val backupEnabled: Boolean = false,
     val vacationPauseEnabled: Boolean = false,
     val workoutLocationMode: String = "GYM", // 'GYM' or 'HOME'

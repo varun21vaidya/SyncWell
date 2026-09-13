@@ -48,6 +48,15 @@ import com.example.ui.theme.Emerald500
 import com.example.ui.theme.Emerald600
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.Slate400
+import com.example.ui.theme.OledBlack
+import com.example.ui.theme.SurfaceTier1
+import com.example.ui.theme.EmeraldGlow
+import com.example.ui.theme.EmeraldDim
+import com.example.ui.theme.TextMuted
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.size
+import com.example.ui.SyncWellSplashScreen
+import com.example.viewmodel.AppLaunchState
 import com.example.viewmodel.SyncWellViewModel
 
 class MainActivity : ComponentActivity() {
@@ -59,20 +68,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val theme by viewModel.theme.collectAsState()
-            val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsState()
+            val appLaunchState by viewModel.appLaunchState.collectAsState()
             val activeModal by viewModel.activeModal.collectAsState()
 
-            MyApplicationTheme(darkTheme = (theme == "dark")) {
+            MyApplicationTheme(darkTheme = true) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (!hasCompletedOnboarding) {
-                        // Draw full screen for onboarding/splash
-                        OnboardingScreen(viewModel = viewModel)
-                    } else {
-                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                            MainNavigationContainer(
-                                viewModel = viewModel,
-                                modifier = Modifier.padding(innerPadding)
-                            )
+                    when (appLaunchState) {
+                        is AppLaunchState.Loading -> {
+                            // Full-screen splash — fills entire viewport immediately
+                            SyncWellSplashScreen()
+                        }
+                        is AppLaunchState.OnboardingRequired -> {
+                            OnboardingScreen(viewModel = viewModel)
+                        }
+                        is AppLaunchState.Ready -> {
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                MainNavigationContainer(
+                                    viewModel = viewModel,
+                                    modifier = Modifier.padding(innerPadding)
+                                )
+                            }
                         }
                     }
 
@@ -129,9 +144,11 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = OledBlack,
         bottomBar = {
             NavigationBar(
-                containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+                containerColor = SurfaceTier1,
+                tonalElevation = 0.dp,
                 modifier = Modifier.testTag("app_navigation_bar")
             ) {
                 val items = listOf(
@@ -141,7 +158,7 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
                     Triple("Focus", Icons.Default.PlayArrow, 3),
                     Triple("Tasks", Icons.Default.Check, 4),
                     Triple("Stats", Icons.Default.Info, 5),
-                    Triple("Settings", Icons.Default.Settings, 6)
+                    Triple("Config", Icons.Default.Settings, 6)
                 )
 
                 items.forEach { (title, icon, index) ->
@@ -149,22 +166,29 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
                     NavigationBarItem(
                         selected = isSelected,
                         onClick = { selectedTabIndex = index },
-                        icon = { Icon(imageVector = icon, contentDescription = "$title Icon") },
+                        icon = {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "$title Tab",
+                                modifier = if (isSelected) Modifier.size(22.dp) else Modifier.size(20.dp)
+                            )
+                        },
                         label = { 
                             Text(
                                 text = title, 
-                                fontSize = 8.sp, 
+                                fontSize = 9.sp, 
                                 maxLines = 1, 
                                 softWrap = false,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             ) 
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Emerald600,
-                            unselectedIconColor = Slate400,
-                            selectedTextColor = Emerald600,
-                            unselectedTextColor = Slate400,
-                            indicatorColor = Emerald500.copy(alpha = 0.12f)
+                            selectedIconColor = EmeraldGlow,
+                            unselectedIconColor = TextMuted,
+                            selectedTextColor = EmeraldGlow,
+                            unselectedTextColor = TextMuted,
+                            indicatorColor = EmeraldDim
                         ),
                         modifier = Modifier.testTag("nav_tab_$index")
                     )

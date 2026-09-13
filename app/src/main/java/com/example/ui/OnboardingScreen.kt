@@ -60,7 +60,7 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
     )
 
     Scaffold(
-        containerColor = OnboardBg
+        containerColor = OledBlack
     ) { padding ->
         Column(
             modifier = Modifier
@@ -70,29 +70,30 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
                 .padding(horizontal = 24.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            // LOGO MARK — small, solid, top only
+            // LOGO MARK — OLED neon emblem
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .background(Emerald500, shape = RoundedCornerShape(14.dp)),
+                    .background(EmeraldDim, shape = RoundedCornerShape(14.dp))
+                    .padding(1.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = "SyncWell Logo",
-                    tint = Color.White,
+                    tint = EmeraldGlow,
                     modifier = Modifier.size(28.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // HEADLINE — high contrast, no transparency
+            // HEADLINE — crisp OLED high contrast
             Text(
                 text = "Welcome to\nSyncWell",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
-                color = Slate900,
+                color = TextPrimary,
                 lineHeight = 38.sp
             )
 
@@ -101,21 +102,21 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
             Text(
                 text = "Your personal elite lifestyle dashboard. Track, align, and execute every day with precision.",
                 fontSize = 15.sp,
-                color = Slate700,
+                color = TextSecondary,
                 lineHeight = 22.sp
             )
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // FEATURE CARDS — fully opaque
+            // FEATURE CARDS — OLED SurfaceTier1 with 1px border
             features.forEach { feature ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Slate200)
+                    colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, OledBorder)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -123,15 +124,15 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .background(Emerald100, shape = RoundedCornerShape(18.dp)),
+                                .size(38.dp)
+                                .background(EmeraldDim, shape = RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = feature.icon,
                                 contentDescription = null,
-                                tint = Emerald500,
-                                modifier = Modifier.size(18.dp)
+                                tint = EmeraldGlow,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
 
@@ -142,13 +143,13 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
                                 text = feature.title,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Slate800
+                                color = TextPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = feature.description,
                                 fontSize = 13.sp,
-                                color = Slate700,
+                                color = TextSecondary,
                                 lineHeight = 19.sp
                             )
                         }
@@ -158,7 +159,7 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // CTA BUTTON
+            // CTA BUTTON — Punchy Emerald glow on black
             Button(
                 onClick = {
                     scope.launch {
@@ -169,7 +170,10 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
                     .fillMaxWidth()
                     .height(56.dp)
                     .testTag("get_started_onboarding_btn"),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EmeraldGlow,
+                    contentColor = OledBlack
+                ),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Row(
@@ -178,14 +182,14 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
                 ) {
                     Text(
                         text = "Get Started",
-                        color = Color.White,
+                        color = OledBlack,
                         fontWeight = FontWeight.Black,
                         fontSize = 16.sp
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = OledBlack,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -196,7 +200,7 @@ fun OnboardingScreen(viewModel: SyncWellViewModel) {
             Text(
                 text = "100% offline. No account required to start.\nCloud backup available in Settings.",
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                color = Slate400,
+                color = TextMuted,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 modifier = Modifier.fillMaxWidth()

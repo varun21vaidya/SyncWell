@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -213,12 +214,12 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Slate100)
+                        .background(SurfaceTier2)
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "$completedCount / $totalCount DONE",
-                        color = Slate700,
+                        color = EmeraldGlow,
                         fontWeight = FontWeight.Black,
                         fontSize = 12.sp
                     )
@@ -231,8 +232,9 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = RoseDim.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, RoseCrimson.copy(alpha = 0.5f))
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -242,12 +244,12 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = "Vacation active",
-                            tint = RoseAccent,
+                            tint = RoseCrimson,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "VACATION MODE ON: Metrics safely frozen.",
-                            color = Color(0xFF991B1B),
+                            color = RoseCrimson,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -343,13 +345,14 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                                                     }
                                                 }
                                                 .testTag("supp_quick_log_$label"),
-                                            colors = CardDefaults.cardColors(containerColor = Slate50)
+                                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
+                                            border = BorderStroke(1.dp, OledBorder)
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(10.dp),
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Slate900)
+                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
                                                 Text(label, color = Slate400, fontSize = 9.sp)
                                             }
                                         }
@@ -371,13 +374,14 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                                                     }
                                                 }
                                                 .testTag("supp_quick_log_$label"),
-                                            colors = CardDefaults.cardColors(containerColor = Slate50)
+                                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
+                                            border = BorderStroke(1.dp, OledBorder)
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(10.dp),
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Slate900)
+                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
                                                 Text(label, color = Slate400, fontSize = 9.sp)
                                             }
                                         }
@@ -485,12 +489,12 @@ fun RoutineItemRow(
             .alpha(if (item.isDone) 0.6f else 1f)
             .testTag("routine_item_${item.orderIndex}"),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isDone) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+            containerColor = if (item.isDone) SurfaceTier1.copy(alpha = 0.7f) else SurfaceTier1
         ),
         shape = RoundedCornerShape(16.dp),
-        border = CardDefaults.outlinedCardBorder()
+        border = BorderStroke(1.dp, OledBorder)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -499,12 +503,12 @@ fun RoutineItemRow(
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Checkbox Icon with 48dp Touch Target
+                    // Checkbox Icon with 36dp Touch Target
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(36.dp)
                             .clickable { onCheckedChange() }
                             .testTag("toggle_checkbox_${item.orderIndex}"),
                         contentAlignment = Alignment.Center
@@ -512,8 +516,8 @@ fun RoutineItemRow(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Completion Box",
-                            tint = if (item.isDone) Emerald500 else Slate200,
-                            modifier = Modifier.size(26.dp)
+                            tint = if (item.isDone) EmeraldGlow else TextMuted,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
 
@@ -576,7 +580,7 @@ fun RoutineItemRow(
 
             if (hasBreakfastSupps || hasLunchSupps || hasBedtimeSupps) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = Slate100, thickness = 1.dp)
+                HorizontalDivider(color = OledBorder, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "ALIGNED SYSTEM SUPPLEMENTS:",
@@ -606,14 +610,15 @@ fun RoutineItemRow(
                                         onLogSupplementWithWarning(name)
                                     }
                                 },
-                            colors = CardDefaults.cardColors(containerColor = Slate50),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
+                            border = BorderStroke(1.dp, OledBorder),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Column(
                                 modifier = Modifier.padding(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Slate900)
+                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TextPrimary)
                                 Text(label, color = Slate400, fontSize = 8.sp)
                             }
                         }
@@ -705,7 +710,7 @@ fun RoutineDetailView(
                     )
                 }
 
-                Divider(color = Slate100, thickness = 1.dp)
+                HorizontalDivider(color = OledBorder, thickness = 1.dp)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -763,7 +768,7 @@ fun RoutineDetailView(
                     lineHeight = 20.sp
                 )
 
-                Divider(color = Slate100)
+                HorizontalDivider(color = OledBorder, thickness = 1.dp)
 
                 Text(
                     text = "LONG-FORM PROCESS GUIDE",
@@ -871,14 +876,15 @@ fun RoutineDetailView(
                                             onLogSupplementWithWarning(name)
                                         }
                                     },
-                                colors = CardDefaults.cardColors(containerColor = Slate50),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
+                                border = BorderStroke(1.dp, OledBorder),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Slate900)
+                                    Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
                                     Text(label, color = Slate400, fontSize = 10.sp)
                                 }
                             }
@@ -892,15 +898,15 @@ fun RoutineDetailView(
 
 fun getCategoryColors(category: String): Pair<Color, Color> {
     return when (category.uppercase()) {
-        "DIET" -> Color(0xFFFEF3C7) to Color(0xFFD97706) // Amber
-        "SKINCARE" -> Color(0xFFECFDF5) to Color(0xFF059669) // Emerald
-        "STUDY" -> Color(0xFFF3E8FF) to Color(0xFF7C3AED) // Purple
-        "WORKOUT" -> Color(0xFFEEF2FF) to Color(0xFF4F46E5) // Indigo
-        "HYGIENE" -> Color(0xFFE0F2FE) to Color(0xFF0369A1) // Sky/Cyan
-        "HAIRCARE" -> Color(0xFFFDF2F8) to Color(0xFFDB2777) // Pink
-        "PREP" -> Color(0xFFF1F5F9) to Color(0xFF475569) // Slate-grey
-        "HEALTH" -> Color(0xFFFFEDD5) to Color(0xFFEA580C) // Orange
-        "SUPPLEMENT" -> Color(0xFFFFF7ED) to Color(0xFFC2410C) // Deep Orange
-        else -> Slate200 to Slate700
+        "DIET" -> AmberDim to AmberFlame
+        "SKINCARE" -> EmeraldDim to EmeraldGlow
+        "STUDY" -> VioletDim to VioletPulse
+        "WORKOUT" -> Color(0xFF1E1B4B) to CyanLaser
+        "HYGIENE" -> CyanDim to CyanLaser
+        "HAIRCARE" -> RoseDim to RoseCrimson
+        "PREP" -> SurfaceTier2 to TextSecondary
+        "HEALTH" -> AmberDim to AmberFlame
+        "SUPPLEMENT" -> AmberDim to AmberFlame
+        else -> SurfaceTier2 to TextSecondary
     }
 }

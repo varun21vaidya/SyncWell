@@ -159,7 +159,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Slate100)
+                            .background(SurfaceTier2)
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
@@ -189,7 +189,8 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                     val scaledFontSize = minOf(58f, (maxWidth.value / 7.5f)).sp
                     Text(
                         text = formattedTime,
-                        color = if (isActiveTimerRunning) Emerald500 else MaterialTheme.colorScheme.onSurface,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        color = if (isActiveTimerRunning) EmeraldGlow else MaterialTheme.colorScheme.onSurface,
                         fontSize = scaledFontSize,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
@@ -267,53 +268,76 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                         fontWeight = FontWeight.Medium
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.bootTimer("STUDY") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .testTag("boot_study_timer"),
-                            colors = ButtonDefaults.buttonColors(containerColor = PurpleAccent),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("STUDY", fontSize = 11.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
-                        }
-
-                        Button(
-                            onClick = { viewModel.bootTimer("WORK") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .testTag("boot_work_timer"),
-                            colors = ButtonDefaults.buttonColors(containerColor = Slate700),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("WORK", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White)
-                        }
-
-                        Button(
-                            onClick = { viewModel.bootTimer("TIMEPASS") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .testTag("boot_timepass_timer"),
-                            colors = ButtonDefaults.buttonColors(containerColor = Slate400),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp)
-                        ) {
-                            Text("TIMEPASS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // ── Focus Category Selection ──────────────────────────────────────────────
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isNarrow = maxWidth < 340.dp
+                        if (isNarrow) {
+                            // Stacked 2-column grid for very small screens
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    FocusCategoryButton(
+                                        label = "STUDY",
+                                        containerColor = PurpleAccent,
+                                        modifier = Modifier.weight(1f),
+                                        testTag = "boot_study_timer",
+                                        onClick = { viewModel.bootTimer("STUDY") }
+                                    )
+                                    FocusCategoryButton(
+                                        label = "WORK",
+                                        containerColor = Slate700,
+                                        modifier = Modifier.weight(1f),
+                                        testTag = "boot_work_timer",
+                                        onClick = { viewModel.bootTimer("WORK") }
+                                    )
+                                }
+                                FocusCategoryButton(
+                                    label = "TIMEPASS",
+                                    containerColor = Slate400,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    testTag = "boot_timepass_timer",
+                                    onClick = { viewModel.bootTimer("TIMEPASS") }
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FocusCategoryButton(
+                                    label = "STUDY",
+                                    containerColor = PurpleAccent,
+                                    modifier = Modifier.weight(1f),
+                                    testTag = "boot_study_timer",
+                                    onClick = { viewModel.bootTimer("STUDY") }
+                                )
+                                FocusCategoryButton(
+                                    label = "WORK",
+                                    containerColor = Slate700,
+                                    modifier = Modifier.weight(1f),
+                                    testTag = "boot_work_timer",
+                                    onClick = { viewModel.bootTimer("WORK") }
+                                )
+                                FocusCategoryButton(
+                                    label = "TIMEPASS",
+                                    containerColor = Slate400,
+                                    modifier = Modifier.weight(1f),
+                                    testTag = "boot_timepass_timer",
+                                    onClick = { viewModel.bootTimer("TIMEPASS") }
+                                )
+                            }
                         }
                     }
                 } else {
-                    // Active Timer running controls
+                    // ── Active Timer Controls ─────────────────────────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Pause / Resume — takes weight
                         if (isActiveTimerRunning) {
                             Button(
                                 onClick = { viewModel.pauseTimer() },
@@ -323,15 +347,22 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                                     .testTag("pause_timer_button"),
                                 colors = ButtonDefaults.buttonColors(containerColor = Slate700),
                                 shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp)
+                                contentPadding = PaddingValues(horizontal = 6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Pause", tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Text("Pause", fontSize = 11.sp, color = Color.White, maxLines = 1, softWrap = false)
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Pause",
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         } else {
                             Button(
@@ -342,18 +373,26 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                                     .testTag("resume_timer_button"),
                                 colors = ButtonDefaults.buttonColors(containerColor = Slate800),
                                 shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp)
+                                contentPadding = PaddingValues(horizontal = 6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Resume", tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Text("Resume", fontSize = 11.sp, color = Color.White, maxLines = 1, softWrap = false)
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Resume",
+                                    fontSize = 12.sp,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
 
+                        // Save Block
                         Button(
                             onClick = { viewModel.saveFocusSession() },
                             modifier = Modifier
@@ -362,26 +401,38 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                                 .testTag("save_focus_session_button"),
                             colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
                             shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Check, contentDescription = "Save", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
-                                Text("Save Block", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimary, maxLines = 1, softWrap = false)
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Save Block",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
 
+                        // Reset (icon only, fixed width = 48 dp)
                         IconButton(
                             onClick = { viewModel.resetTimer() },
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Slate100)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .testTag("reset_timer_button")
                         ) {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reset Clock", tint = Slate700)
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset Clock",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -515,3 +566,33 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
         }
     }
 }
+
+@Composable
+private fun FocusCategoryButton(
+    label: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+    testTag: String = "",
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .height(44.dp)
+            .testTag(testTag),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
+        shape = RoundedCornerShape(10.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip
+        )
+    }
+}
+

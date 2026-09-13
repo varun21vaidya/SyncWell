@@ -122,14 +122,14 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                 if (currentActiveSession != null) {
                     Card(
                         modifier = Modifier.fillMaxWidth().testTag("active_workout_resume_banner"),
-                        colors = CardDefaults.cardColors(containerColor = Emerald500.copy(alpha = 0.15f)),
+                        colors = CardDefaults.cardColors(containerColor = EmeraldDim),
                         shape = RoundedCornerShape(16.dp),
-                        border = CardDefaults.outlinedCardBorder()
+                        border = BorderStroke(1.dp, EmeraldGlow)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -138,13 +138,13 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                     text = "WORKOUT SESSION IN PROGRESS",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Emerald700
+                                    color = EmeraldGlow
                                 )
                                 Text(
                                     text = currentActiveSession?.dayType ?: "",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Slate800
+                                    color = TextPrimary
                                 )
                             }
 
@@ -152,25 +152,26 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = { isViewingActiveSession = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow),
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                                    Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OledBlack)
                                 }
 
                                 OutlinedButton(
                                     onClick = { viewModel.finishWorkout() },
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald700)
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldGlow),
+                                    border = BorderStroke(1.dp, EmeraldGlow)
                                 ) {
                                     Text("Finish", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 TextButton(
                                     onClick = { viewModel.stopWorkout() },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = RoseCrimson),
                                 ) {
                                     Text("Discard", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
@@ -184,9 +185,9 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                     modifier = Modifier.fillMaxWidth().wrapContentHeight(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(20.dp),
-                    border = CardDefaults.outlinedCardBorder()
+                    border = BorderStroke(1.dp, OledBorder)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Text(
                             text = "WORKOUT LOCATION ENVIRONMENT",
                             color = Slate400,
@@ -208,9 +209,9 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                     .clickable { viewModel.setWorkoutLocationMode("GYM") },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (gymActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    containerColor = if (gymActive) EmeraldDim else SurfaceTier2
                                 ),
-                                border = if (gymActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                                border = if (gymActive) BorderStroke(1.5.dp, EmeraldGlow) else BorderStroke(1.dp, OledBorder)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -222,13 +223,13 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = "Gym Mode",
-                                        tint = if (gymActive) MaterialTheme.colorScheme.primary else Slate400,
+                                        tint = if (gymActive) EmeraldGlow else TextMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         "Commercial Gym",
-                                        color = if (gymActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = if (gymActive) EmeraldGlow else TextSecondary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
                                         maxLines = 1,
@@ -244,9 +245,9 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                     .clickable { viewModel.setWorkoutLocationMode("HOME") },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (homeActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    containerColor = if (homeActive) EmeraldDim else SurfaceTier2
                                 ),
-                                border = if (homeActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                                border = if (homeActive) BorderStroke(1.5.dp, EmeraldGlow) else BorderStroke(1.dp, OledBorder)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -258,13 +259,13 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                     Icon(
                                         imageVector = Icons.Default.Home,
                                         contentDescription = "Home Mode",
-                                        tint = if (homeActive) MaterialTheme.colorScheme.primary else Slate400,
+                                        tint = if (homeActive) EmeraldGlow else TextMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         "Home Calisthenics",
-                                        color = if (homeActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = if (homeActive) EmeraldGlow else TextSecondary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
                                         maxLines = 1,
@@ -726,24 +727,24 @@ fun ActiveExerciseCard(
                 )
                 
                 // Weight Adjust
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(Slate100, RoundedCornerShape(8.dp))) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(SurfaceTier2, RoundedCornerShape(8.dp))) {
                     IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax, (sessionExercise.targetWeightKg ?: 0.0) - 2.5) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate700)
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
-                    Text("${sessionExercise.targetWeightKg ?: 30.0}kg", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
+                    Text("${sessionExercise.targetWeightKg ?: 30.0}kg", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax, (sessionExercise.targetWeightKg ?: 0.0) + 2.5) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate700)
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
                 }
 
                 // Reps Adjust
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(Slate100, RoundedCornerShape(8.dp))) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(SurfaceTier2, RoundedCornerShape(8.dp))) {
                     IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax - 1, sessionExercise.targetWeightKg ?: 0.0) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate700)
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
-                    Text("${sessionExercise.targetRepsMax} reps", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
+                    Text("${sessionExercise.targetRepsMax} reps", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax + 1, sessionExercise.targetWeightKg ?: 0.0) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate700)
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
                 }
             }
@@ -852,7 +853,7 @@ fun ActiveExerciseCard(
                                 when {
                                     isEditingThisSet -> Emerald500.copy(alpha = 0.25f)
                                     log.isCompleted -> Emerald500.copy(alpha = 0.08f)
-                                    else -> Slate50
+                                    else -> SurfaceTier2
                                 }
                             )
                             .clickable {
@@ -867,19 +868,19 @@ fun ActiveExerciseCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 "Set #${log.setIndex}",
-                                color = Slate700,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
                             if (isEditingThisSet) {
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("(Editing)", color = Emerald700, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("(Editing)", color = EmeraldGlow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
                         Text(
                             text = if (log.isCompleted) "${log.weightKg} kg x ${log.reps} reps (Done)" else "Pending Target: ${sessionExercise.targetWeightKg} kg",
-                            color = if (log.isCompleted) Emerald700 else Slate400,
+                            color = if (log.isCompleted) EmeraldGlow else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
@@ -896,14 +897,14 @@ fun ActiveExerciseCard(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete Set",
-                                    tint = Slate400,
+                                    tint = RoseCrimson,
                                     modifier = Modifier.size(18.dp)
                                )
                             }
                             Icon(
                                 imageVector = if (log.isCompleted) Icons.Default.CheckCircle else Icons.Default.Check,
                                 contentDescription = "Status",
-                                tint = if (log.isCompleted) Emerald500 else Slate200,
+                                tint = if (log.isCompleted) EmeraldGlow else TextMuted,
                                 modifier = Modifier.size(16.dp)
                             )
                         }

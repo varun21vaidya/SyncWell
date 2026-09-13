@@ -35,6 +35,12 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 import org.json.JSONArray
 import org.json.JSONObject
 
+sealed class AppLaunchState {
+    object Loading : AppLaunchState()
+    object OnboardingRequired : AppLaunchState()
+    object Ready : AppLaunchState()
+}
+
 class SyncWellViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -54,8 +60,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val _activeModal = MutableStateFlow<String?>(null)
     val activeModal: StateFlow<String?> = _activeModal.asStateFlow()
 
+    // LAUNCH STATE — controls full-screen splash vs onboarding vs main app
+    private val _appLaunchState = MutableStateFlow<AppLaunchState>(AppLaunchState.Loading)
+    val appLaunchState: StateFlow<AppLaunchState> = _appLaunchState.asStateFlow()
+
     // 3. SETTINGS STORE
-    private val _theme = MutableStateFlow("light")
+    private val _theme = MutableStateFlow("dark")
     val theme: StateFlow<String> = _theme.asStateFlow()
 
     private val _backupEnabled = MutableStateFlow(false)
@@ -209,13 +219,15 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val settings = dao.getAppSettingsDirectly()
         if (settings != null) {
             _hasCompletedOnboarding.value = true
-            _theme.value = settings.themeMode
+            _theme.value = "dark"
             _backupEnabled.value = settings.backupEnabled
             _workoutLocationMode.value = settings.workoutLocationMode
             // Load credentials if present
             _user.value = settings.firebaseUid ?: "Offline_User"
+            _appLaunchState.value = AppLaunchState.Ready
         } else {
             _hasCompletedOnboarding.value = false
+            _appLaunchState.value = AppLaunchState.OnboardingRequired
         }
     }
 
@@ -225,7 +237,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             id = UUID.randomUUID().toString(),
             firebaseUid = "Offline_User",
             defaultWaterMl = 4000,
-            themeMode = "light",
+            themeMode = "dark",
             backupEnabled = false,
             vacationPauseEnabled = false,
             workoutLocationMode = "GYM",
@@ -578,12 +590,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     // 3. SETTINGS INTERFACES
     fun toggleTheme() {
-        val nextTheme = if (_theme.value == "light") "dark" else "light"
-        _theme.value = nextTheme
+        // App is locked to high-performance OLED Dark Mode
+        _theme.value = "dark"
         viewModelScope.launch {
             val settings = dao.getAppSettingsDirectly()
             if (settings != null) {
-                dao.insertAppSettings(settings.copy(themeMode = nextTheme))
+                dao.insertAppSettings(settings.copy(themeMode = "dark"))
             }
         }
     }

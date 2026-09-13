@@ -38,7 +38,7 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
     ) {
             // Header
@@ -84,9 +84,13 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            item { HorizontalDivider(color = Slate100) }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    thickness = 1.dp
+                )
+            }
 
             // ── LONG TERM GOALS ──
             item {
@@ -139,8 +143,8 @@ fun GoalSectionHeader(
             }
             // Completion badge
             if (total > 0) {
-                Box(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Emerald100).padding(horizontal = 12.dp, vertical = 4.dp)) {
-                    Text("$completedCount / $total", color = Emerald700, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                Box(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(EmeraldDim).padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Text("$completedCount / $total", color = EmeraldGlow, fontWeight = FontWeight.Black, fontSize = 12.sp)
                 }
             }
         }
@@ -150,12 +154,12 @@ fun GoalSectionHeader(
             OutlinedTextField(
                 value = input, onValueChange = onInputChange,
                 placeholder = { Text("Add a goal...", fontSize = 13.sp) },
-                modifier = Modifier.weight(1f).height(52.dp),
+                modifier = Modifier.weight(1f).height(50.dp),
                 shape = RoundedCornerShape(12.dp), singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = EmeraldGlow)
             )
-            IconButton(onClick = onAdd, modifier = Modifier.size(52.dp).background(Emerald600, RoundedCornerShape(12.dp))) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.onPrimary)
+            IconButton(onClick = onAdd, modifier = Modifier.size(50.dp).background(EmeraldGlow, RoundedCornerShape(12.dp))) {
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = OledBlack)
             }
         }
 
@@ -163,11 +167,11 @@ fun GoalSectionHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("HIGH", "MEDIUM", "LOW").forEach { p ->
                 val isSelected = selectedPriority == p
-                val chipBg = when(p) { "HIGH" -> if (isSelected) RoseAccent else Slate100; "MEDIUM" -> if (isSelected) GoldAccent else Slate100; else -> if (isSelected) Emerald500 else Slate100 }
+                val chipBg = when(p) { "HIGH" -> if (isSelected) RoseCrimson else SurfaceTier2; "MEDIUM" -> if (isSelected) AmberFlame else SurfaceTier2; else -> if (isSelected) EmeraldGlow else SurfaceTier2 }
                 Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(chipBg)
-                    .clickable { onPriorityChange(p) }.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).padding(horizontal = 14.dp, vertical = 6.dp),
+                    .clickable { onPriorityChange(p) }.defaultMinSize(minWidth = 44.dp, minHeight = 36.dp).padding(horizontal = 12.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center) {
-                    Text(p, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Slate700, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                    Text(p, color = if (isSelected) OledBlack else TextSecondary, fontWeight = FontWeight.Black, fontSize = 11.sp)
                 }
             }
         }
@@ -177,7 +181,7 @@ fun GoalSectionHeader(
 @Composable
 fun EmptyGoalPlaceholder(text: String) {
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = Slate400, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = TextMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -186,44 +190,44 @@ fun EmptyGoalPlaceholder(text: String) {
 fun GoalItemRow(todo: Todo, onToggle: () -> Unit, onDelete: () -> Unit, onEdit: (String) -> Unit) {
     var isEditing by remember { mutableStateOf(false) }
     var editText by remember { mutableStateOf(todo.title) }
-    val priorityColor = when (todo.priority.uppercase()) { "HIGH" -> RoseAccent; "MEDIUM" -> GoldAccent; else -> Emerald500 }
+    val priorityColor = when (todo.priority.uppercase()) { "HIGH" -> RoseCrimson; "MEDIUM" -> AmberFlame; else -> EmeraldGlow }
 
     Card(modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = if (todo.isCompleted) MaterialTheme.colorScheme.surface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = if (todo.isCompleted) SurfaceTier1.copy(alpha = 0.6f) else SurfaceTier1),
         shape = RoundedCornerShape(14.dp), border = CardDefaults.outlinedCardBorder()
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             // Priority strip
-            Box(modifier = Modifier.width(4.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(priorityColor))
+            Box(modifier = Modifier.width(4.dp).height(28.dp).clip(RoundedCornerShape(2.dp)).background(priorityColor))
             Spacer(Modifier.width(10.dp))
             // Checkbox
-            Box(modifier = Modifier.size(48.dp).clickable { onToggle() }, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(36.dp).clickable { onToggle() }, contentAlignment = Alignment.Center) {
                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null,
-                    tint = if (todo.isCompleted) Emerald500 else Slate200,
-                    modifier = Modifier.size(24.dp))
+                    tint = if (todo.isCompleted) EmeraldGlow else TextMuted,
+                    modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.width(2.dp))
+            Spacer(Modifier.width(4.dp))
             // Title or edit field
             if (isEditing) {
                 OutlinedTextField(value = editText, onValueChange = { editText = it },
-                    modifier = Modifier.weight(1f).height(48.dp), singleLine = true,
+                    modifier = Modifier.weight(1f).height(44.dp), singleLine = true,
                     shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500))
-                IconButton(onClick = { onEdit(editText); isEditing = false }, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Default.Check, contentDescription = "Save", tint = Emerald600)
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = EmeraldGlow))
+                IconButton(onClick = { onEdit(editText); isEditing = false }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Check, contentDescription = "Save", tint = EmeraldGlow)
                 }
             } else {
                 Text(text = todo.title, modifier = Modifier.weight(1f),
-                    color = if (todo.isCompleted) Slate400 else MaterialTheme.colorScheme.onSurface,
+                    color = if (todo.isCompleted) TextMuted else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold, fontSize = 14.sp,
                     textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else TextDecoration.None)
                 // Edit pencil icon
-                IconButton(onClick = { isEditing = true; editText = todo.title }, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Slate400, modifier = Modifier.size(16.dp))
+                IconButton(onClick = { isEditing = true; editText = todo.title }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(16.dp))
                 }
                 // Delete
-                IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RoseAccent, modifier = Modifier.size(16.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RoseCrimson, modifier = Modifier.size(16.dp))
                 }
             }
         }

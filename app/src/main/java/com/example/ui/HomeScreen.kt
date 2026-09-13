@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -87,7 +88,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Color(0xFFFEF3C7))
+                    .background(AmberDim)
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -95,12 +96,12 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = "Active Streak Star",
-                    tint = GoldAccent,
+                    tint = AmberFlame,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = "$activeStreak Days",
-                    color = Color(0xFF92400E),
+                    color = AmberFlame,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -149,9 +150,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 .clickable { onNavigateToTab(1) }, // Navigates to Routine Tab
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp),
-            border = CardDefaults.outlinedCardBorder()
+            border = BorderStroke(1.dp, OledBorder)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
                     text = "TODAY'S ROUTINE",
                     color = Slate400,
@@ -182,7 +183,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Custom Rounded Progress Bar
                 Box(
@@ -190,14 +191,14 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                         .fillMaxWidth()
                         .height(10.dp)
                         .clip(CircleShape)
-                        .background(Slate100)
+                        .background(SurfaceTier3)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(if (completionRatio > 0f) completionRatio else 0.01f)
                             .clip(CircleShape)
-                            .background(Emerald500)
+                            .background(EmeraldGlow)
                     )
                 }
             }
@@ -213,9 +214,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(20.dp),
-                border = CardDefaults.outlinedCardBorder()
+                border = BorderStroke(1.dp, OledBorder)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -249,7 +250,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     ) {
                         Text(
                             text = String.format(Locale.getDefault(), "%.1f", totalWaterMl / 1000f),
-                            color = Emerald500,
+                            color = CyanLaser,
                             fontSize = 30.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.testTag("water_total_text")
@@ -275,11 +276,11 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                                 .weight(1f)
                                 .height(38.dp)
                                 .testTag("add_water_250"),
-                            colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                            colors = ButtonDefaults.buttonColors(containerColor = CyanLaser),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("+250ml", fontSize = 11.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
+                            Text("+250ml", fontSize = 11.sp, fontWeight = FontWeight.Black, color = OledBlack)
                         }
 
                         Button(
@@ -288,11 +289,11 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                                 .weight(1f)
                                 .height(38.dp)
                                 .testTag("add_water_500"),
-                            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                            colors = ButtonDefaults.buttonColors(containerColor = CyanDim),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("+500ml", fontSize = 11.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
+                            Text("+500ml", fontSize = 11.sp, fontWeight = FontWeight.Black, color = CyanLaser)
                         }
                     }
                 }
@@ -305,9 +306,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     .clickable { onNavigateToTab(3) }, // Navigates to Focus Tab
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(20.dp),
-                border = CardDefaults.outlinedCardBorder()
+                border = BorderStroke(1.dp, OledBorder)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
                         text = "STUDY FOCUS",
                         color = Slate400,
@@ -322,7 +323,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     val focusMinsLeft = studyMins % 60
                     Text(
                         text = "${focusHours}h ${focusMinsLeft}m",
-                        color = PurpleAccent,
+                        color = VioletPulse,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -344,12 +345,12 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = "Start Timer",
-                            tint = PurpleAccent,
+                            tint = VioletPulse,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Start block",
-                            color = PurpleAccent,
+                            color = VioletPulse,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -363,12 +364,12 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp),
-            border = CardDefaults.outlinedCardBorder()
+            border = BorderStroke(1.dp, OledBorder)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -402,7 +403,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Edit steps manually",
-                                tint = Emerald500,
+                                tint = EmeraldGlow,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -412,10 +413,11 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 Button(
                     onClick = { viewModel.syncStepsWithHealthConnect() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        containerColor = SurfaceTier2,
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, OledBorder),
                     modifier = Modifier.testTag("health_sync_button")
                 ) {
                     Row(
@@ -437,8 +439,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
         // Bodyweight Target metrics info card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
             shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(

@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -127,18 +128,18 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
         ) {
             Card(
                 modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = if (isGymDoneToday) Emerald500.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(containerColor = if (isGymDoneToday) EmeraldDim else SurfaceTier1),
                 shape = RoundedCornerShape(20.dp),
-                border = CardDefaults.outlinedCardBorder()
+                border = BorderStroke(1.dp, OledBorder)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Gym Streak",
-                        tint = if (isGymDoneToday) Emerald500 else Slate400,
+                        tint = if (isGymDoneToday) EmeraldGlow else TextMuted,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
@@ -150,7 +151,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     )
                     Text(
                         text = if (isGymDoneToday) "🔥 Active" else "Pending",
-                        color = if (isGymDoneToday) Emerald600 else MaterialTheme.colorScheme.onSurface,
+                        color = if (isGymDoneToday) EmeraldGlow else MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -159,18 +160,18 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
 
             Card(
                 modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = if (isDietDoneToday) Emerald500.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(containerColor = if (isDietDoneToday) EmeraldDim else SurfaceTier1),
                 shape = RoundedCornerShape(20.dp),
-                border = CardDefaults.outlinedCardBorder()
+                border = BorderStroke(1.dp, OledBorder)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Diet Streak",
-                        tint = if (isDietDoneToday) Emerald500 else Slate400,
+                        tint = if (isDietDoneToday) EmeraldGlow else TextMuted,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
@@ -182,7 +183,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     )
                     Text(
                         text = if (isDietDoneToday) "🔥 Active" else "$proteinPointsToday/4 Pts",
-                        color = if (isDietDoneToday) Emerald600 else MaterialTheme.colorScheme.onSurface,
+                        color = if (isDietDoneToday) EmeraldGlow else MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -195,7 +196,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Slate100)
+                .background(SurfaceTier1)
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -206,16 +207,16 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) Emerald500 else Color.Transparent)
+                        .background(if (isSelected) EmeraldGlow else Color.Transparent)
                         .clickable { selectedPeriod = period }
-                        .defaultMinSize(minHeight = 48.dp) // FIX 8: 48dp minimum height
+                        .defaultMinSize(minHeight = 44.dp)
                         .padding(vertical = 10.dp)
                         .testTag("period_tab_$period"),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = period,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Slate700,
+                        color = if (isSelected) OledBlack else TextSecondary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp
                     )
@@ -590,7 +591,7 @@ fun ActualBarRow(label: String, value: Int, maxValue: Float) {
                 .weight(1f)
                 .height(14.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Slate100)
+                .background(SurfaceTier2)
         ) {
             Box(
                 modifier = Modifier
@@ -633,7 +634,7 @@ fun ActualWaterMeter(label: String, waterMl: Int, maxValue: Float) {
                 .weight(1f)
                 .height(10.dp)
                 .clip(RoundedCornerShape(5.dp))
-                .background(Slate100)
+                .background(SurfaceTier2)
         ) {
             Box(
                 modifier = Modifier
