@@ -131,6 +131,9 @@ interface SyncWellDao {
     @Query("SELECT * FROM workout_sessions WHERE isDeleted = 0 ORDER BY date DESC")
     fun getWorkoutSessions(): Flow<List<WorkoutSession>>
 
+    @Query("SELECT * FROM workout_sessions WHERE date = :dateKey AND isDeleted = 0")
+    suspend fun getWorkoutSessionsByDate(dateKey: String): List<WorkoutSession>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWorkoutSession(session: WorkoutSession)
 

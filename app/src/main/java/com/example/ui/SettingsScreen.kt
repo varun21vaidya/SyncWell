@@ -121,6 +121,159 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        // Card: TARGET WEIGHT & FITNESS TARGETS
+        val targetWeightKg by viewModel.targetWeightKg.collectAsState()
+        var targetWeightText by remember(targetWeightKg) {
+            mutableStateOf(String.format(java.util.Locale.US, "%.1f", targetWeightKg))
+        }
+        var targetWeightSaved by remember { mutableStateOf(false) }
+
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("target_weight_settings_card"),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "FITNESS & BODY TARGETS",
+                            color = Slate400,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = "Target Body Weight",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Surface(
+                        color = EmeraldDim,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, EmeraldGlow.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = String.format(java.util.Locale.US, "%.1f kg", targetWeightKg),
+                            color = EmeraldGlow,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Configure your personal body composition goal. Analytics charts and progress trackers dynamically reference this target.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = targetWeightText,
+                        onValueChange = {
+                            targetWeightText = it
+                            targetWeightSaved = false
+                        },
+                        label = { Text("Goal (kg)", fontSize = 11.sp) },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("target_weight_input"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldGlow,
+                            unfocusedBorderColor = OledBorder,
+                            focusedContainerColor = SurfaceTier2,
+                            unfocusedContainerColor = SurfaceTier2
+                        ),
+                        singleLine = true
+                    )
+
+                    Button(
+                        onClick = {
+                            val parsed = targetWeightText.toDoubleOrNull()
+                            if (parsed != null && parsed > 0) {
+                                viewModel.setTargetWeight(parsed)
+                                targetWeightSaved = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (targetWeightSaved) EmeraldGlow else SurfaceTier2,
+                            contentColor = if (targetWeightSaved) OledBlack else TextPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, if (targetWeightSaved) EmeraldGlow else OledBorder),
+                        modifier = Modifier.height(54.dp).testTag("save_target_weight_btn")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (targetWeightSaved) Icons.Default.Check else Icons.Default.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = if (targetWeightSaved) "Saved!" else "Save Target",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                // Quick Increment / Decrement Steppers
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(-1.0, -0.5, 0.5, 1.0).forEach { delta ->
+                        OutlinedButton(
+                            onClick = {
+                                val currentVal = targetWeightText.toDoubleOrNull() ?: targetWeightKg
+                                val newVal = (currentVal + delta).coerceAtLeast(30.0)
+                                val formatted = String.format(java.util.Locale.US, "%.1f", newVal)
+                                targetWeightText = formatted
+                                viewModel.setTargetWeight(newVal)
+                                targetWeightSaved = true
+                            },
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = SurfaceTier2,
+                                contentColor = Slate400
+                            ),
+                            border = BorderStroke(1.dp, OledBorder),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(
+                                text = if (delta > 0) "+$delta" else "$delta",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Card 2: VACATION MODE PANELS
         Card(
             modifier = Modifier.fillMaxWidth(),

@@ -10,6 +10,7 @@ data class AppSettings(
     @PrimaryKey val id: String,
     val firebaseUid: String?,
     val defaultWaterMl: Int = 4000,
+    val targetWeightKg: Double = 70.0,
     val themeMode: String = "dark",
     val backupEnabled: Boolean = false,
     val vacationPauseEnabled: Boolean = false,
@@ -68,7 +69,8 @@ data class RoutineTemplate(
             childColumns = ["templateId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index(value = ["templateId"])]
 )
 data class RoutineTemplateItem(
     @PrimaryKey val id: String,
@@ -181,7 +183,8 @@ data class WorkoutSession(
             parentColumns = ["id"],
             childColumns = ["exerciseId"]
         )
-    ]
+    ],
+    indices = [Index(value = ["sessionId"]), Index(value = ["exerciseId"])]
 )
 data class WorkoutSessionExercise(
     @PrimaryKey val id: String,

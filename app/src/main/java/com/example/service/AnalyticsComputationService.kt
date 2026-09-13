@@ -118,6 +118,22 @@ object AnalyticsComputationService {
                 dietStreakValue = yesterdayDietStreak
             }
 
+            // Workout Sessions & Duration
+            val workoutSessions = dao.getWorkoutSessionsByDate(dateKey)
+            var workoutMins = 0
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            workoutSessions.forEach { ws ->
+                if (ws.endedAt != null) {
+                    try {
+                        val sTime = isoFormat.parse(ws.startedAt)?.time ?: 0L
+                        val eTime = isoFormat.parse(ws.endedAt)?.time ?: 0L
+                        if (eTime > sTime) {
+                            workoutMins += ((eTime - sTime) / (1000 * 60)).toInt()
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
             val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
 
             val computedAnalytics = DailyAnalytics(
@@ -126,7 +142,7 @@ object AnalyticsComputationService {
                 totalStudyMinutes = studyMins,
                 workMin = workMins,
                 timepassMin = timepassMins,
-                totalWorkoutMinutes = 0, // updated when exercises finished
+                totalWorkoutMinutes = workoutMins,
                 totalWaterMl = totalWater,
                 totalSteps = totalSteps,
                 sleepMin = sleepMins,

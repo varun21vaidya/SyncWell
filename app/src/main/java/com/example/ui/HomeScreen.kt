@@ -36,6 +36,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val todayAnalytics by viewModel.todayAnalytics.collectAsState()
     val todayStepsLog by viewModel.todayStepsLog.collectAsState()
     val weightLogs by viewModel.weightLogs.collectAsState(initial = emptyList())
+    val targetWeightKg by viewModel.targetWeightKg.collectAsState()
     val latestWeight = weightLogs.firstOrNull()?.weightKg
 
     var showManualStepsDialog by remember { mutableStateOf(false) }
@@ -451,9 +452,10 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     color = MaterialTheme.colorScheme.primary,
                     letterSpacing = 1.sp
                 )
-                val latestWeightText = latestWeight?.let { " | Latest Logged: $it kg" } ?: ""
+                val latestWeightText = latestWeight?.let { " | Latest Logged: ${String.format(Locale.US, "%.1f", it)} kg" } ?: ""
+                val targetStr = String.format(Locale.US, "%.1f", targetWeightKg)
                 Text(
-                    text = "Current metric goal is strictly pinned to 70.0 kg$latestWeightText. Ensure you register scales weight within Analytics logs tab regularly.",
+                    text = "Current metric goal is set to $targetStr kg$latestWeightText. Ensure you register scale weights within Analytics logs tab regularly.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),

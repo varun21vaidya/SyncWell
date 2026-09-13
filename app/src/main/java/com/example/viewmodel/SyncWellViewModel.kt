@@ -77,6 +77,9 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val _workoutLocationMode = MutableStateFlow("GYM")
     val workoutLocationMode: StateFlow<String> = _workoutLocationMode.asStateFlow()
 
+    private val _targetWeightKg = MutableStateFlow(70.0)
+    val targetWeightKg: StateFlow<Double> = _targetWeightKg.asStateFlow()
+
     // 4. ROUTINE STORE
     private val _activeRoutineItems = MutableStateFlow<List<DailyRoutineItem>>(emptyList())
     val activeRoutineItems: StateFlow<List<DailyRoutineItem>> = _activeRoutineItems.asStateFlow()
@@ -222,6 +225,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             _theme.value = "dark"
             _backupEnabled.value = settings.backupEnabled
             _workoutLocationMode.value = settings.workoutLocationMode
+            _targetWeightKg.value = settings.targetWeightKg
             // Load credentials if present
             _user.value = settings.firebaseUid ?: "Offline_User"
             _appLaunchState.value = AppLaunchState.Ready
@@ -237,6 +241,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             id = UUID.randomUUID().toString(),
             firebaseUid = "Offline_User",
             defaultWaterMl = 4000,
+            targetWeightKg = 70.0,
             themeMode = "dark",
             backupEnabled = false,
             vacationPauseEnabled = false,
@@ -617,6 +622,18 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             if (settings != null) {
                 dao.insertAppSettings(settings.copy(workoutLocationMode = mode))
             }
+        }
+    }
+
+    fun setTargetWeight(weight: Double) {
+        if (weight <= 0.0) return
+        _targetWeightKg.value = weight
+        viewModelScope.launch {
+            val settings = dao.getAppSettingsDirectly()
+            if (settings != null) {
+                dao.insertAppSettings(settings.copy(targetWeightKg = weight))
+            }
+            AnalyticsComputationService.recalculateDayCache(dao, DayBoundaryManager.currentTargetDate.value)
         }
     }
 
