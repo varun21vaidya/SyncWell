@@ -150,16 +150,32 @@ fun GoalSectionHeader(
         }
 
         // Input row
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             OutlinedTextField(
-                value = input, onValueChange = onInputChange,
-                placeholder = { Text("Add a goal...", fontSize = 13.sp) },
-                modifier = Modifier.weight(1f).height(50.dp),
-                shape = RoundedCornerShape(12.dp), singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = EmeraldGlow)
+                value = input,
+                onValueChange = onInputChange,
+                placeholder = { Text("Add a goal...", fontSize = 13.sp, maxLines = 1) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EmeraldGlow,
+                    unfocusedBorderColor = OledBorder,
+                    focusedContainerColor = SurfaceTier1,
+                    unfocusedContainerColor = SurfaceTier1
+                )
             )
-            IconButton(onClick = onAdd, modifier = Modifier.size(50.dp).background(EmeraldGlow, RoundedCornerShape(12.dp))) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = OledBlack)
+            IconButton(
+                onClick = onAdd,
+                modifier = Modifier
+                    .size(52.dp)
+                    .background(EmeraldGlow, RoundedCornerShape(12.dp))
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = OledBlack, modifier = Modifier.size(24.dp))
             }
         }
 
@@ -209,11 +225,23 @@ fun GoalItemRow(todo: Todo, onToggle: () -> Unit, onDelete: () -> Unit, onEdit: 
             Spacer(Modifier.width(4.dp))
             // Title or edit field
             if (isEditing) {
-                OutlinedTextField(value = editText, onValueChange = { editText = it },
-                    modifier = Modifier.weight(1f).height(44.dp), singleLine = true,
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
                     shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = EmeraldGlow))
-                IconButton(onClick = { onEdit(editText); isEditing = false }, modifier = Modifier.size(36.dp)) {
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGlow,
+                        unfocusedBorderColor = OledBorder,
+                        focusedContainerColor = SurfaceTier2,
+                        unfocusedContainerColor = SurfaceTier2
+                    )
+                )
+                IconButton(
+                    onClick = { onEdit(editText); isEditing = false },
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(Icons.Default.Check, contentDescription = "Save", tint = EmeraldGlow)
                 }
             } else {

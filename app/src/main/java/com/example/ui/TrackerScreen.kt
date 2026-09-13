@@ -578,11 +578,11 @@ private fun FocusCategoryButton(
     Button(
         onClick = onClick,
         modifier = modifier
-            .height(44.dp)
+            .defaultMinSize(minHeight = 44.dp)
             .testTag(testTag),
         colors = ButtonDefaults.buttonColors(containerColor = containerColor),
         shape = RoundedCornerShape(10.dp),
-        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
     ) {
         Text(
             text = label,
@@ -591,7 +591,7 @@ private fun FocusCategoryButton(
             color = Color.White,
             maxLines = 1,
             softWrap = false,
-            overflow = TextOverflow.Clip
+            textAlign = TextAlign.Center
         )
     }
 }

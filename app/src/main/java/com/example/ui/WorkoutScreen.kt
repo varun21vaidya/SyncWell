@@ -513,15 +513,19 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                         OutlinedTextField(
                                             value = customName,
                                             onValueChange = { customName = it },
-                                            placeholder = { Text("e.g. Incline DB Flyes", fontSize = 12.sp) },
+                                            placeholder = { Text("e.g. Incline DB Flyes", fontSize = 12.sp, maxLines = 1) },
                                             modifier = Modifier
                                                 .weight(1.5f)
-                                                .height(52.dp)
                                                 .testTag("custom_exercise_input_name"),
                                             singleLine = true,
                                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
                                             shape = RoundedCornerShape(8.dp),
-                                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = EmeraldGlow,
+                                                unfocusedBorderColor = OledBorder,
+                                                focusedContainerColor = SurfaceTier2,
+                                                unfocusedContainerColor = SurfaceTier2
+                                            )
                                         )
 
                                         Box(modifier = Modifier.weight(1f)) {
@@ -529,7 +533,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                                 onClick = { showCategoryMenu = true },
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .height(52.dp)
+                                                    .height(54.dp)
                                                     .testTag("custom_exercise_cat_button"),
                                                 shape = RoundedCornerShape(8.dp),
                                                 contentPadding = PaddingValues(horizontal = 6.dp)
@@ -714,14 +718,18 @@ fun ActiveExerciseCard(
                 }
             }
 
+            // Responsive targets adjustments: horizontally scrollable if screen width is narrow
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = "TARGETS:",
-                    color = Slate700,
+                    color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -761,7 +769,7 @@ fun ActiveExerciseCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -769,12 +777,15 @@ fun ActiveExerciseCard(
                     onValueChange = { repsInput = it },
                     label = { Text("Reps", fontSize = 10.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .weight(1.2f)
-                        .height(58.dp),
+                    modifier = Modifier.weight(1.1f),
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGlow,
+                        unfocusedBorderColor = OledBorder,
+                        focusedContainerColor = SurfaceTier2,
+                        unfocusedContainerColor = SurfaceTier2
+                    )
                 )
 
                 OutlinedTextField(
@@ -782,12 +793,15 @@ fun ActiveExerciseCard(
                     onValueChange = { weightInput = it },
                     label = { Text("Wt (kg)", fontSize = 10.sp) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .weight(1.5f)
-                        .height(58.dp),
+                    modifier = Modifier.weight(1.3f),
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGlow,
+                        unfocusedBorderColor = OledBorder,
+                        focusedContainerColor = SurfaceTier2,
+                        unfocusedContainerColor = SurfaceTier2
+                    )
                 )
 
                 // BUG 2 FIX: Haptic feedback on log/update set
@@ -813,18 +827,20 @@ fun ActiveExerciseCard(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow),
                     modifier = Modifier
-                        .weight(1.8f)
-                        .height(52.dp)
+                        .weight(1.6f)
+                        .height(54.dp)
                         .testTag("log_set_submit"),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     Text(
                         text = if (selectedSetId != null) "Update Set" else "Log Set",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = OledBlack,
+                        maxLines = 1
                     )
                 }
 
@@ -980,9 +996,16 @@ fun ExerciseNotesDialog(
                     OutlinedTextField(
                         value = editText,
                         onValueChange = { editText = it },
-                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 100.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldGlow,
+                            unfocusedBorderColor = OledBorder,
+                            focusedContainerColor = SurfaceTier2,
+                            unfocusedContainerColor = SurfaceTier2
+                        )
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {

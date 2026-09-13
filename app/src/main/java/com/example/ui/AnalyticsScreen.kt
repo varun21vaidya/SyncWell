@@ -271,7 +271,12 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             .fillMaxWidth()
                             .testTag("analytics_weight_input"),
                         shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldGlow,
+                            unfocusedBorderColor = OledBorder,
+                            focusedContainerColor = SurfaceTier2,
+                            unfocusedContainerColor = SurfaceTier2
+                        ),
                         label = { Text("Body Weight (kg)", fontSize = 11.sp) },
                         singleLine = true
                     )

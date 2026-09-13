@@ -489,7 +489,13 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                                 .fillMaxWidth()
                                 .testTag("steps_manual_input"),
                             shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Emerald500)
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldGlow,
+                                unfocusedBorderColor = OledBorder,
+                                focusedContainerColor = SurfaceTier2,
+                                unfocusedContainerColor = SurfaceTier2
+                            )
                         )
                     }
                 },
