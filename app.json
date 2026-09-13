@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "SyncWell",
+    "slug": "syncwell",
+    "version": "1.0.0",
+    "scheme": "syncwell",
+    "android": {
+      "package": "com.syncwell.app",
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "react-native-health-connect",
+        {
+          "permissions": [
+            "READ_STEPS"
+          ],
+          "rationaleMarkdown": "Track daily steps for your fitness dashboard."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#10B981"
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "webClientId": "${{ EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID }}"
+        }
+      ]
+    ],
+    "owner": "vrn2107",
+    "extra": {
+      "eas": {
+        "projectId": "4fbc14b6-99ce-4398-b83f-602652a783ef"
+      },
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

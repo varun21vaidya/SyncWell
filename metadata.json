@@ -1,0 +1,6 @@
+{
+  "name": "SyncWell",
+  "description": "A comprehensive lifestyle control dashboard to maintain unwavering consistency across health, fitness, study routines, career tracking, and personal targets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
