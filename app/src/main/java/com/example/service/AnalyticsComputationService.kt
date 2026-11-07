@@ -92,7 +92,7 @@ object AnalyticsComputationService {
 
             // Gym Streak Logic
             val isGymCompleted = dao.getDailyRoutineItems(dailyRoutine?.id ?: "").any {
-                (it.title.contains("Gym", ignoreCase = true) || it.title.contains("Workout", ignoreCase = true)) && it.isDone
+                it.category == "WORKOUT" && it.isDone
             }
             if (isGymCompleted) {
                 gymStreakValue = yesterdayGymStreak + 1
@@ -103,14 +103,9 @@ object AnalyticsComputationService {
             // Diet Streak Logic (Protein Points)
             // Assuming dietProteinPoints is updated elsewhere and stored in DB, or we compute here.
             // Let's compute based on current items.
-            val proteinItems = dao.getDailyRoutineItems(dailyRoutine?.id ?: "").filter {
-                it.title.contains("Breakfast", ignoreCase = true) ||
-                it.title.contains("Lunch", ignoreCase = true) ||
-                it.title.contains("Dinner", ignoreCase = true) ||
-                it.title.contains("Protein", ignoreCase = true)
-            }
+            val proteinItems = dao.getDailyRoutineItems(dailyRoutine?.id ?: "").filter { it.category == "DIET" }
             val dietProteinPoints = proteinItems.count { it.isDone }
-            val isDietCompleted = dietProteinPoints >= 4
+            val isDietCompleted = proteinItems.isNotEmpty() && dietProteinPoints >= minOf(4, proteinItems.size)
 
             if (isDietCompleted) {
                 dietStreakValue = yesterdayDietStreak + 1

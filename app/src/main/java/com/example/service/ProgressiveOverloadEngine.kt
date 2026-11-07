@@ -10,7 +10,7 @@ object ProgressiveOverloadEngine {
      * the engine recommends increasing the weight by 2.5 kg.
      */
     fun evaluateProgression(completedSets: List<WorkoutSetLog>, targetReps: Int, currentWeight: Double): Double {
-        if (completedSets.isEmpty()) return currentWeight
+        if (completedSets.isEmpty() || currentWeight <= 0.0) return currentWeight
 
         val allCompletedWithMaxReps = completedSets.all { log ->
             log.isCompleted && log.reps >= targetReps

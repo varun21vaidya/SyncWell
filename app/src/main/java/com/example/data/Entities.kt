@@ -10,13 +10,17 @@ data class AppSettings(
     @PrimaryKey val id: String,
     val firebaseUid: String?,
     val defaultWaterMl: Int = 4000,
-    val targetWeightKg: Double = 70.0,
+    val targetWeightKg: Double = 0.0, // 0.0 = goal not set
     val themeMode: String = "dark",
     val backupEnabled: Boolean = false,
     val vacationPauseEnabled: Boolean = false,
     val workoutLocationMode: String = "GYM", // 'GYM' or 'HOME'
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val wakeTime: String = "07:00",
+    val sleepTime: String = "23:00",
+    val workoutDays: String = "[1,2,3,4,5]", // 0 = Sunday
+    val onboardingAnswered: Boolean = false
 )
 
 @Entity(tableName = "notification_settings")
@@ -56,8 +60,12 @@ data class VacationDay(
 data class RoutineTemplate(
     @PrimaryKey val id: String,
     val name: String,
-    val dayType: String, // WEEKDAY, SATURDAY, SUNDAY
-    val isActive: Boolean = true
+    val dayType: String = "", // legacy, unused
+    val isActive: Boolean = true,
+    val repeatType: String = "WEEKLY", // DAILY, WEEKLY, ONCE
+    val daysOfWeek: String = "[1,2,3,4,5,6,0]", // 0 = Sunday
+    val onceDate: String? = null, // YYYY-MM-DD when repeatType == ONCE
+    val isStarter: Boolean = false
 )
 
 @Entity(

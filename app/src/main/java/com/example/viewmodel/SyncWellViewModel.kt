@@ -78,8 +78,14 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val _workoutLocationMode = MutableStateFlow("GYM")
     val workoutLocationMode: StateFlow<String> = _workoutLocationMode.asStateFlow()
 
-    private val _targetWeightKg = MutableStateFlow(70.0)
-    val targetWeightKg: StateFlow<Double> = _targetWeightKg.asStateFlow()
+    private val _waterGoalMl = MutableStateFlow(2500)
+    val waterGoalMl: StateFlow<Int> = _waterGoalMl.asStateFlow()
+
+    private val _targetWeightKg = MutableStateFlow(0.0) // raw goal, 0.0 = not set
+    // shortcut: when no goal is set, charts use the latest logged weight (else 70) as the reference line; hide it properly if this ships to many users
+    val targetWeightKg: StateFlow<Double> = combine(_targetWeightKg, dao.getWeightLogs()) { goal, logs ->
+        if (goal > 0.0) goal else logs.firstOrNull()?.weightKg ?: 70.0
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, 70.0)
 
     // 4. ROUTINE STORE
     private val _activeRoutineItems = MutableStateFlow<List<DailyRoutineItem>>(emptyList())
@@ -204,20 +210,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     // Onboarding Status Checks
     suspend fun checkSetupStatus() {
-        // Ensure database is seeded even if Room Callback didn't run (e.g. on update)
-        val templates = dao.getRoutineTemplates()
-        
-        // RE-SEED LOGIC: If templates are old/vague (check count), force update!
-        val forceReseed = templates.isNotEmpty() && templates.any { 
-            (it.name == "Standard Weekday Runbook" && dao.getRoutineTemplateItems(it.id).size < 25) ||
-            (it.dayType == "SUNDAY" && dao.getRoutineTemplateItems(it.id).size < 22)
-        }
-
-        if (templates.isEmpty() || forceReseed) {
-            DatabaseSeeder.seedDatabase(dao, forceUpdate = true)
-            // If we reseeded, we should also reset today's routine to reflect new templates immediately
-            resetTodayRoutine()
-        }
+        DatabaseSeeder.seedExercises(dao) // insert-if-missing; custom exercises are kept
 
         // We only check if settings exist to determine onboarding completion.
         val settings = dao.getAppSettingsDirectly()
@@ -227,6 +220,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             _backupEnabled.value = settings.backupEnabled
             _workoutLocationMode.value = settings.workoutLocationMode
             _targetWeightKg.value = settings.targetWeightKg
+            _waterGoalMl.value = settings.defaultWaterMl
             // Load credentials if present
             _user.value = settings.firebaseUid ?: "Offline_User"
             _appLaunchState.value = AppLaunchState.Ready
@@ -236,25 +230,55 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    suspend fun completeOnboarding() {
+    /** Saves the onboarding answers, builds the starter routines from them and enters the app. */
+    suspend fun completeOnboarding(
+        answers: SetupAnswers = SetupAnswers(),
+        waterMl: Int = 2500,
+        location: String = "GYM",
+        currentWeightKg: Double? = null,
+        goalWeightKg: Double? = null
+    ) {
         val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-        val settings = AppSettings(
-            id = UUID.randomUUID().toString(),
-            firebaseUid = "Offline_User",
-            defaultWaterMl = 4000,
-            targetWeightKg = 70.0,
-            themeMode = "dark",
-            backupEnabled = false,
-            vacationPauseEnabled = false,
-            workoutLocationMode = "GYM",
-            createdAt = todayIso,
+        val existing = dao.getAppSettingsDirectly()
+        val settings = (existing ?: AppSettings(id = UUID.randomUUID().toString(), firebaseUid = pendingEmail ?: "Offline_User", createdAt = todayIso, updatedAt = todayIso)).copy(
+            defaultWaterMl = waterMl,
+            targetWeightKg = goalWeightKg ?: 0.0,
+            workoutLocationMode = location,
+            wakeTime = answers.wakeTime,
+            sleepTime = answers.sleepTime,
+            workoutDays = answers.workoutDays.joinToString(",", "[", "]"),
+            onboardingAnswered = true,
             updatedAt = todayIso
         )
         dao.insertAppSettings(settings)
-        
-        // Setup initial default routines check
+        DatabaseSeeder.seedStarterRoutines(dao, answers)
+        if (currentWeightKg != null && currentWeightKg > 0) {
+            val dateKey = DayBoundaryManager.currentTargetDate.value
+            dao.insertWeightLog(WeightLog(UUID.randomUUID().toString(), dateKey, currentWeightKg, false, todayIso))
+        }
         checkSetupStatus()
+        rebuildTodayRoutine()
     }
+
+    /** Re-run setup: rebuilds only the starter routines and updates the stored answers. */
+    fun rerunSetup(answers: SetupAnswers, waterMl: Int, location: String, goalWeightKg: Double?) {
+        viewModelScope.launch {
+            val s = dao.getAppSettingsDirectly() ?: return@launch
+            dao.insertAppSettings(s.copy(
+                defaultWaterMl = waterMl, workoutLocationMode = location,
+                targetWeightKg = goalWeightKg ?: s.targetWeightKg,
+                wakeTime = answers.wakeTime, sleepTime = answers.sleepTime,
+                workoutDays = answers.workoutDays.joinToString(",", "[", "]")
+            ))
+            _workoutLocationMode.value = location
+            _waterGoalMl.value = waterMl
+            goalWeightKg?.let { _targetWeightKg.value = it }
+            DatabaseSeeder.seedStarterRoutines(dao, answers)
+            rebuildTodayRoutine()
+        }
+    }
+
+    private var pendingEmail: String? = null
 
     // Active Day Hydrations and Data Collections
     private fun loadTodayData(dateKey: String) {
@@ -300,63 +324,38 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun initializeTodayRoutine(dateKey: String, isVac: Boolean) {
-        val existingRoutine = dao.getDailyRoutineDirectly(dateKey)
-        if (existingRoutine == null) {
-            val todayName = getTodayDayName()
-            val dayType = when (todayName) {
-                "Saturday" -> "SATURDAY"
-                "Sunday" -> "SUNDAY"
-                else -> "WEEKDAY"
-            }
+        // Nothing to generate until onboarding has created the starter routines
+        if (dao.getAppSettingsDirectly() == null) return
+        if (dao.getDailyRoutineDirectly(dateKey) == null) generateRoutine(dateKey, isVac)
+    }
 
-            val templates = dao.getRoutineTemplates()
-            var matchingTemplate = templates.find { it.dayType == dayType }
-            if (matchingTemplate == null && templates.isNotEmpty()) {
-                matchingTemplate = templates.first()
-            }
-            
-            val routineId = UUID.randomUUID().toString()
-            val dailyRoutine = DailyRoutine(
-                id = routineId,
-                date = dateKey,
-                templateId = matchingTemplate?.id,
-                completionPct = 0.0,
-                isVacation = isVac
-            )
-            dao.insertDailyRoutine(dailyRoutine)
+    /** Builds the day's routine from every template whose schedule matches [dateKey]. */
+    private suspend fun generateRoutine(dateKey: String, isVac: Boolean, doneTitles: Set<String> = emptySet()) {
+        val matching = RoutineSchedule.templatesForDate(dao.getRoutineTemplates(), dateKey)
+        val routineId = UUID.randomUUID().toString()
+        dao.insertDailyRoutine(DailyRoutine(routineId, dateKey, matching.firstOrNull()?.id, 0.0, isVac))
+        val templateItems = matching.flatMap { dao.getRoutineTemplateItems(it.id) }
+        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles)
+        if (items.isNotEmpty()) dao.insertDailyRoutineItems(items)
+    }
 
-            val routineItems = if (matchingTemplate != null) {
-                val templateItems = dao.getRoutineTemplateItems(matchingTemplate.id)
-                templateItems.map { t ->
-                    DailyRoutineItem(
-                        id = UUID.randomUUID().toString(),
-                        dailyRoutineId = routineId,
-                        title = t.title,
-                        category = t.category,
-                        orderIndex = t.orderIndex,
-                        scheduledTime = t.scheduledTime,
-                        isDone = false
-                    )
-                }
-            } else {
-                emptyList()
-            }
-
-            if (routineItems.isNotEmpty()) {
-                dao.insertDailyRoutineItems(routineItems)
-            }
+    /** Regenerates today's list from the templates, keeping items already ticked (matched by title). */
+    fun rebuildTodayRoutine() {
+        val dateKey = DayBoundaryManager.currentTargetDate.value
+        viewModelScope.launch {
+            val done = dao.getDailyRoutineDirectly(dateKey)?.let { r ->
+                dao.getDailyRoutineItems(r.id).filter { it.isDone }.map { it.title }.toSet()
+            } ?: emptySet()
+            dao.clearDailyRoutineItemsForDate(dateKey)
+            dao.clearDailyRoutineForDate(dateKey)
+            generateRoutine(dateKey, _isVacationActive.value, done)
+            loadTodayData(dateKey)
         }
     }
 
     // Toggle Routine item Checkbox
     fun toggleRoutineItem(item: DailyRoutineItem) {
-        val titleLower = item.title.lowercase()
-        val isProteinRelated = !item.isDone && (
-                titleLower.contains("breakfast") ||
-                titleLower.contains("lunch") ||
-                titleLower.contains("dinner") ||
-                titleLower.contains("protein")
-        )
+        val isProteinRelated = !item.isDone && item.category == "DIET"
 
         if (isProteinRelated) {
             _proteinConfirmationTask.value = item
@@ -417,11 +416,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 _activeModal.value = "SIGNING_IN"
                 
                 val serverClientId = context.getString(R.string.google_web_client_id)
-                Log.d("SyncWellAuth", "Using Client ID: $serverClientId")
 
-                if (serverClientId.contains("YOUR_WEB_CLIENT_ID_PLACEHOLDER")) {
-                    Log.e("SyncWellAuth", "CRITICAL: Web Client ID is still the placeholder! Please update strings.xml")
-                }
 
                 val googleIdOption = GetSignInWithGoogleOption.Builder(serverClientId)
                     .build()
@@ -467,6 +462,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun authorizeGoogleSignIn(name: String, email: String) {
         _user.value = name
+        pendingEmail = email
         viewModelScope.launch {
             val settings = dao.getAppSettingsDirectly()
             if (settings != null) {
@@ -530,7 +526,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun restoreDataFromCloud() {
         viewModelScope.launch {
             val settings = dao.getAppSettingsDirectly()
-            val email = settings?.firebaseUid ?: _user.value ?: return@launch
+            val email = pendingEmail ?: settings?.firebaseUid ?: _user.value ?: return@launch
 
             _isCloudBackupSyncInProgress.value = true
             try {
@@ -539,6 +535,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                     onSuccess = {
                         Log.d("SyncWellAuth", "Restore successful for $email")
                         _backupTestResult.value = "SUCCESS"
+                        viewModelScope.launch {
+                            checkSetupStatus() // enters the app when the restore supplied the settings
+                            rebuildTodayRoutine()
+                        }
                     },
                     onFailure = { e ->
                         if (!requestDriveConsentIfNeeded(e) { restoreDataFromCloud() }) {
@@ -840,7 +840,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 // Fetch previous completed set metrics OR fall back to progression Suggested weights
                 val lastLog = dao.getLastCompletedSetLogForExercise(ex.id)
                 val suggestedState = dao.getExerciseProgression(ex.id)
-                val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 30.0)
+                val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 0.0)
                 val targetReps = lastLog?.reps ?: (suggestedState?.suggestedReps ?: ex.defaultRepsMax)
 
                 WorkoutSessionExercise(
@@ -863,7 +863,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                         id = UUID.randomUUID().toString(),
                         sessionExerciseId = se.id,
                         setIndex = setIdx,
-                        weightKg = se.targetWeightKg ?: 10.0,
+                        weightKg = se.targetWeightKg ?: 0.0,
                         reps = se.targetRepsMax,
                         isCompleted = false
                     )
@@ -885,7 +885,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             // Fetch previous completed set metrics for progression matching
             val lastLog = dao.getLastCompletedSetLogForExercise(exerciseId)
             val suggestedState = dao.getExerciseProgression(exerciseId)
-            val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 30.0)
+            val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 0.0)
             val targetReps = lastLog?.reps ?: (suggestedState?.suggestedReps ?: 12)
 
             val library = dao.getExerciseLibrary()
@@ -907,7 +907,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                     id = UUID.randomUUID().toString(),
                     sessionExerciseId = se.id,
                     setIndex = setIdx,
-                    weightKg = se.targetWeightKg ?: 10.0,
+                    weightKg = se.targetWeightKg ?: 0.0,
                     reps = se.targetRepsMax,
                     isCompleted = false
                 )
@@ -962,7 +962,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun addSetToSessionExercise(sessionExerciseId: String) {
         val currentLogs = _workoutSetLogs.value[sessionExerciseId] ?: return
         val nextIdx = (currentLogs.maxOfOrNull { it.setIndex } ?: 0) + 1
-        val lastWeight = currentLogs.lastOrNull()?.weightKg ?: 30.0
+        val lastWeight = currentLogs.lastOrNull()?.weightKg ?: 0.0
         val lastReps = currentLogs.lastOrNull()?.reps ?: 12
 
         viewModelScope.launch {
@@ -1254,6 +1254,95 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             }
 
             AnalyticsComputationService.recalculateDayCache(dao, todayKey)
+        }
+    }
+
+    // ROUTINE EDITING (templates + today's list). Callers ask "apply to today?" and then call rebuildTodayRoutine().
+    val routineTemplates: StateFlow<List<RoutineTemplate>> =
+        dao.getRoutineTemplatesFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun templateItems(templateId: String): Flow<List<RoutineTemplateItem>> = dao.getRoutineTemplateItemsFlow(templateId)
+
+    fun saveRoutineTemplate(t: RoutineTemplate) { viewModelScope.launch { dao.insertRoutineTemplate(t) } }
+
+    fun deleteRoutineTemplate(id: String) { viewModelScope.launch { dao.deleteRoutineTemplate(id) } }
+
+    fun saveTemplateItem(item: RoutineTemplateItem) { viewModelScope.launch { dao.insertRoutineTemplateItems(listOf(item)) } }
+
+    fun deleteTemplateItem(id: String) { viewModelScope.launch { dao.deleteRoutineTemplateItem(id) } }
+
+    fun moveTemplateItem(items: List<RoutineTemplateItem>, index: Int, delta: Int) {
+        val j = index + delta
+        if (j !in items.indices) return
+        viewModelScope.launch {
+            dao.updateRoutineTemplateItem(items[index].copy(orderIndex = items[j].orderIndex))
+            dao.updateRoutineTemplateItem(items[j].copy(orderIndex = items[index].orderIndex))
+        }
+    }
+
+    private suspend fun refreshTodayCompletion() {
+        val dateKey = DayBoundaryManager.currentTargetDate.value
+        val r = dao.getDailyRoutineDirectly(dateKey) ?: return
+        val items = dao.getDailyRoutineItems(r.id)
+        dao.updateDailyRoutine(r.copy(completionPct = if (items.isEmpty()) 0.0 else items.count { it.isDone }.toDouble() / items.size))
+        AnalyticsComputationService.recalculateDayCache(dao, dateKey)
+    }
+
+    fun saveTodayItem(item: DailyRoutineItem) {
+        viewModelScope.launch {
+            dao.insertDailyRoutineItem(item)
+            refreshTodayCompletion()
+        }
+    }
+
+    fun addTodayItem(title: String, category: String, time: String?) {
+        viewModelScope.launch {
+            val r = dao.getDailyRoutineDirectly(DayBoundaryManager.currentTargetDate.value) ?: return@launch
+            val next = (dao.getDailyRoutineItems(r.id).maxOfOrNull { it.orderIndex } ?: 0) + 1
+            dao.insertDailyRoutineItem(DailyRoutineItem(UUID.randomUUID().toString(), r.id, title, category, next, time))
+            refreshTodayCompletion()
+        }
+    }
+
+    fun deleteTodayItem(id: String) {
+        viewModelScope.launch {
+            dao.deleteDailyRoutineItem(id)
+            refreshTodayCompletion()
+        }
+    }
+
+    fun moveTodayItem(index: Int, delta: Int) {
+        val items = _activeRoutineItems.value
+        val j = index + delta
+        if (j !in items.indices) return
+        viewModelScope.launch {
+            dao.updateDailyRoutineItem(items[index].copy(orderIndex = items[j].orderIndex))
+            dao.updateDailyRoutineItem(items[j].copy(orderIndex = items[index].orderIndex))
+        }
+    }
+
+    suspend fun getAppSettings(): AppSettings? = dao.getAppSettingsDirectly()
+
+    /** Stored onboarding answers; vitamins come from the starter Supplements routine. */
+    suspend fun currentSetupAnswers(): SetupAnswers {
+        val s = dao.getAppSettingsDirectly()
+        val starterIds = dao.getRoutineTemplates().filter { it.isStarter }.map { it.id }.toSet()
+        return SetupAnswers(
+            wakeTime = s?.wakeTime ?: "07:00",
+            sleepTime = s?.sleepTime ?: "23:00",
+            workoutDays = RoutineSchedule.parseDays(s?.workoutDays ?: "[1,3,5]"),
+            vitamins = dao.getAllRoutineTemplateItems()
+                .filter { it.templateId in starterIds && it.category == "SUPPLEMENT" }
+                .map { VitaminChoice(it.title, it.scheduledTime) }
+                .distinctBy { it.name }
+        )
+    }
+
+    /** Rebuilds the starter routines from the stored answers; user-created routines stay. */
+    fun resetRoutinesToDefaults() {
+        viewModelScope.launch {
+            DatabaseSeeder.seedStarterRoutines(dao, currentSetupAnswers())
+            rebuildTodayRoutine()
         }
     }
 

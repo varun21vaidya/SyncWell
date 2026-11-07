@@ -651,7 +651,7 @@ fun ActiveExerciseCard(
 ) {
     val haptic = LocalHapticFeedback.current
     var repsInput by remember(sessionExercise) { mutableStateOf(sessionExercise.targetRepsMax.toString()) }
-    var weightInput by remember(sessionExercise) { mutableStateOf(String.format(Locale.getDefault(), "%.1f", sessionExercise.targetWeightKg ?: 30.0)) }
+    var weightInput by remember(sessionExercise) { mutableStateOf(String.format(Locale.getDefault(), "%.1f", sessionExercise.targetWeightKg ?: 0.0)) }
     var selectedSetId by remember { mutableStateOf<String?>(null) }
 
     // FEATURE 10: Notes popup state
@@ -736,10 +736,10 @@ fun ActiveExerciseCard(
                 
                 // Weight Adjust
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(SurfaceTier2, RoundedCornerShape(8.dp))) {
-                    IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax, (sessionExercise.targetWeightKg ?: 0.0) - 2.5) }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax, maxOf(0.0, (sessionExercise.targetWeightKg ?: 0.0) - 2.5)) }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
-                    Text("${sessionExercise.targetWeightKg ?: 30.0}kg", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("${sessionExercise.targetWeightKg ?: 0.0}kg", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     IconButton(onClick = { viewModel.updateExerciseTargets(sessionExercise.id, sessionExercise.targetRepsMax, (sessionExercise.targetWeightKg ?: 0.0) + 2.5) }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextSecondary)
                     }
@@ -758,7 +758,7 @@ fun ActiveExerciseCard(
             }
 
             Text(
-                text = "Category: $category | Session Target: ${sessionExercise.targetSets} Sets x ${sessionExercise.targetRepsMax} Reps @ ${sessionExercise.targetWeightKg ?: 30.0} kg",
+                text = "Category: $category | Session Target: ${sessionExercise.targetSets} Sets x ${sessionExercise.targetRepsMax} Reps @ ${sessionExercise.targetWeightKg ?: 0.0} kg",
                 color = Slate400,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
@@ -809,7 +809,7 @@ fun ActiveExerciseCard(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val reps = repsInput.toIntOrNull() ?: 12
-                        val wt = weightInput.toDoubleOrNull() ?: 30.0
+                        val wt = weightInput.toDoubleOrNull() ?: 0.0
                         
                         val curSelectedId = selectedSetId
                         if (curSelectedId != null) {
@@ -895,7 +895,7 @@ fun ActiveExerciseCard(
                         }
 
                         Text(
-                            text = if (log.isCompleted) "${log.weightKg} kg x ${log.reps} reps (Done)" else "Pending Target: ${sessionExercise.targetWeightKg} kg",
+                            text = if (log.isCompleted) "${log.weightKg} kg x ${log.reps} reps (Done)" else "Pending Target: ${sessionExercise.targetWeightKg ?: 0.0} kg",
                             color = if (log.isCompleted) EmeraldGlow else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp

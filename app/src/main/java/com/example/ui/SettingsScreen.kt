@@ -392,7 +392,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = OledBorder)
 
-                // FEATURE 14: Test Backup Now button with result feedback
+                // FEATURE 14: Back up now button with result feedback
                 Button(
                     onClick = { viewModel.triggerTestBackup() },
                     colors = ButtonDefaults.buttonColors(
@@ -422,7 +422,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                         else -> {
                             Icon(Icons.Default.Share, contentDescription = null, tint = OledBlack)
                             Spacer(Modifier.width(8.dp))
-                            Text("Test Backup Now", color = OledBlack, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Back up now", color = OledBlack, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -555,11 +555,49 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        var rerunStage by remember { mutableIntStateOf(0) } // 0 none, 1 confirm, 2 questions
+        TextButton(onClick = { rerunStage = 1 }, modifier = Modifier.fillMaxWidth()) {
+            Text("Re-run setup questions", color = EmeraldGlow, fontWeight = FontWeight.Bold)
+        }
+        if (rerunStage == 1) {
+            AlertDialog(
+                onDismissRequest = { rerunStage = 0 },
+                title = { Text("Re-run setup?", fontWeight = FontWeight.Black) },
+                text = { Text("This rebuilds the starter routines and discards your edits to them. Routines you created stay.") },
+                confirmButton = { TextButton(onClick = { rerunStage = 2 }) { Text("CONTINUE", color = RoseCrimson, fontWeight = FontWeight.Black) } },
+                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("CANCEL", color = TextMuted) } },
+                shape = RoundedCornerShape(20.dp),
+                containerColor = SurfaceTier1
+            )
+        }
+        if (rerunStage == 2) {
+            val initial by produceState<SetupResult?>(null) {
+                val s = viewModel.getAppSettings()
+                value = SetupResult(viewModel.currentSetupAnswers(), s?.defaultWaterMl ?: 2500, s?.workoutLocationMode ?: "GYM", null, s?.targetWeightKg)
+            }
+            AlertDialog(
+                onDismissRequest = { rerunStage = 0 },
+                title = { Text("Setup questions", fontWeight = FontWeight.Black) },
+                text = {
+                    initial?.let {
+                        SetupQuestionsForm(it, askCurrentWeight = false, submitLabel = "Rebuild starter routines", onSubmit = { r ->
+                            viewModel.rerunSetup(r.answers, r.waterMl, r.location, r.goalWeightKg)
+                            rerunStage = 0
+                        })
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("CANCEL", color = TextMuted) } },
+                shape = RoundedCornerShape(20.dp),
+                containerColor = SurfaceTier1
+            )
+        }
+
         if (showResetDialog) {
             AlertDialog(
                 onDismissRequest = { showResetDialog = false },
                 title = { Text("Reset Confirmation", fontWeight = FontWeight.Black) },
-                text = { Text("This will permanently delete all progress for today's routine and reload the 22+ tasks from templates. Other data like logs and focus sessions will remain safe.") },
+                text = { Text("This will permanently delete all progress for today's routine and rebuild it from your routines. Other data like logs and focus sessions will remain safe.") },
                 confirmButton = {
                     TextButton(
                         onClick = {

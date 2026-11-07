@@ -39,7 +39,7 @@ object CloudBackupService {
     suspend fun performBackup(context: Context, dao: SyncWellDao, userEmail: String): Result<BackupSummary> {
         return try {
             val root = JSONObject()
-            root.put("version", 2)
+            root.put("version", 3)
             val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
             root.put("backupTimestamp", iso)
 
@@ -292,6 +292,83 @@ object CloudBackupService {
             }
             root.put("vacationDays", vdArr)
 
+            // 17. App settings
+            dao.getAppSettingsDirectly()?.let { st ->
+                root.put("appSettings", JSONObject().apply {
+                    put("id", st.id)
+                    put("firebaseUid", st.firebaseUid ?: JSONObject.NULL)
+                    put("defaultWaterMl", st.defaultWaterMl)
+                    put("targetWeightKg", st.targetWeightKg)
+                    put("themeMode", st.themeMode)
+                    put("backupEnabled", st.backupEnabled)
+                    put("vacationPauseEnabled", st.vacationPauseEnabled)
+                    put("workoutLocationMode", st.workoutLocationMode)
+                    put("createdAt", st.createdAt)
+                    put("updatedAt", st.updatedAt)
+                    put("wakeTime", st.wakeTime)
+                    put("sleepTime", st.sleepTime)
+                    put("workoutDays", st.workoutDays)
+                })
+            }
+
+            // 18. Notification settings
+            dao.getNotificationSettingsDirectly()?.let { ns ->
+                root.put("notificationSettings", JSONObject().apply {
+                    put("id", ns.id)
+                    put("waterRemindersEnabled", ns.waterRemindersEnabled)
+                    put("waterReminderIntervalMin", ns.waterReminderIntervalMin)
+                    put("medicineRemindersEnabled", ns.medicineRemindersEnabled)
+                    put("createdAt", ns.createdAt)
+                    put("updatedAt", ns.updatedAt)
+                })
+            }
+
+            // 19. Routine templates + items
+            root.put("routineTemplates", JSONArray().also { arr ->
+                dao.getRoutineTemplates().forEach { t ->
+                    arr.put(JSONObject().apply {
+                        put("id", t.id)
+                        put("name", t.name)
+                        put("isActive", t.isActive)
+                        put("repeatType", t.repeatType)
+                        put("daysOfWeek", t.daysOfWeek)
+                        putOpt("onceDate", t.onceDate)
+                        put("isStarter", t.isStarter)
+                    })
+                }
+            })
+            root.put("routineTemplateItems", JSONArray().also { arr ->
+                dao.getAllRoutineTemplateItems().forEach { i ->
+                    arr.put(JSONObject().apply {
+                        put("id", i.id)
+                        put("templateId", i.templateId)
+                        put("title", i.title)
+                        put("category", i.category)
+                        put("orderIndex", i.orderIndex)
+                        putOpt("scheduledTime", i.scheduledTime)
+                        put("isRequired", i.isRequired)
+                    })
+                }
+            })
+
+            // 20. Custom exercises (built-in ones are re-seeded)
+            root.put("customExercises", JSONArray().also { arr ->
+                dao.getExerciseLibrary().filter { !it.id.startsWith("ex_") && !it.id.startsWith("home_") }.forEach { e ->
+                    arr.put(JSONObject().apply {
+                        put("id", e.id)
+                        put("name", e.name)
+                        put("category", e.category)
+                        put("defaultSets", e.defaultSets)
+                        put("defaultRepsMin", e.defaultRepsMin)
+                        put("defaultRepsMax", e.defaultRepsMax)
+                        put("defaultRestSec", e.defaultRestSec)
+                        putOpt("homeAlternativeId", e.homeAlternativeId)
+                        putOpt("alternatingGroupId", e.alternatingGroupId)
+                        putOpt("environmentType", e.environmentType)
+                    })
+                }
+            })
+
             // Upload to the user's Google Drive (hidden app data folder)
             val token = DriveBackupClient.accessToken(context, userEmail)
             DriveBackupClient.upload(token, root.toString())
@@ -322,7 +399,7 @@ object CloudBackupService {
             Log.d(TAG, "Backup succeeded for $userEmail: ${summary.workoutSessionsCount} workouts, ${summary.todosCount} todos, ${summary.trackerSessionsCount} tracker sessions")
             Result.success(summary)
         } catch (e: Exception) {
-            Log.e(TAG, "Backup failed for $userEmail", e)
+            Log.e(TAG, "Backup failed", e)
             Result.failure(e)
         }
     }
@@ -334,6 +411,78 @@ object CloudBackupService {
                 ?: return Result.failure(IllegalStateException("No cloud backup found for $userEmail"))
 
             val root = JSONObject(jsonString)
+
+            // 0. Settings, routines and custom exercises (before the data that references them)
+            root.optJSONObject("appSettings")?.let { o ->
+                val existing = dao.getAppSettingsDirectly()
+                dao.insertAppSettings(AppSettings(
+                    id = existing?.id ?: o.getString("id"),
+                    firebaseUid = if (o.isNull("firebaseUid")) null else o.getString("firebaseUid"),
+                    defaultWaterMl = o.optInt("defaultWaterMl", 2500),
+                    targetWeightKg = o.optDouble("targetWeightKg", 0.0),
+                    themeMode = o.optString("themeMode", "dark"),
+                    backupEnabled = o.optBoolean("backupEnabled", false),
+                    vacationPauseEnabled = o.optBoolean("vacationPauseEnabled", false),
+                    workoutLocationMode = o.optString("workoutLocationMode", "GYM"),
+                    createdAt = o.getString("createdAt"),
+                    updatedAt = o.getString("updatedAt"),
+                    wakeTime = o.optString("wakeTime", "07:00"),
+                    sleepTime = o.optString("sleepTime", "23:00"),
+                    workoutDays = o.optString("workoutDays", "[1,2,3,4,5]"),
+                    onboardingAnswered = true
+                ))
+            }
+            root.optJSONObject("notificationSettings")?.let { o ->
+                val existing = dao.getNotificationSettingsDirectly()
+                dao.insertNotificationSettings(NotificationSettings(
+                    id = existing?.id ?: o.getString("id"),
+                    waterRemindersEnabled = o.optBoolean("waterRemindersEnabled", true),
+                    waterReminderIntervalMin = o.optInt("waterReminderIntervalMin", 120),
+                    medicineRemindersEnabled = o.optBoolean("medicineRemindersEnabled", true),
+                    createdAt = o.getString("createdAt"),
+                    updatedAt = o.getString("updatedAt")
+                ))
+            }
+            root.optJSONArray("routineTemplates")?.let { arr ->
+                // A v3 backup replaces the device's routines (v2 backups have none, so the starters stay)
+                dao.clearRoutineTemplates()
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    dao.insertRoutineTemplate(RoutineTemplate(
+                        id = o.getString("id"), name = o.getString("name"),
+                        isActive = o.optBoolean("isActive", true),
+                        repeatType = o.optString("repeatType", "WEEKLY"),
+                        daysOfWeek = o.optString("daysOfWeek", "[1,2,3,4,5,6,0]"),
+                        onceDate = if (o.isNull("onceDate")) null else o.optString("onceDate"),
+                        isStarter = o.optBoolean("isStarter", false)
+                    ))
+                }
+            }
+            root.optJSONArray("routineTemplateItems")?.let { arr ->
+                val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->
+                    RoutineTemplateItem(
+                        id = o.getString("id"), templateId = o.getString("templateId"),
+                        title = o.getString("title"), category = o.getString("category"),
+                        orderIndex = o.getInt("orderIndex"),
+                        scheduledTime = if (o.isNull("scheduledTime")) null else o.optString("scheduledTime"),
+                        isRequired = o.optBoolean("isRequired", true)
+                    )
+                }
+                if (list.isNotEmpty()) dao.insertRoutineTemplateItems(list)
+            }
+            root.optJSONArray("customExercises")?.let { arr ->
+                val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->
+                    ExerciseLibraryItem(
+                        id = o.getString("id"), name = o.getString("name"), category = o.getString("category"),
+                        defaultSets = o.getInt("defaultSets"), defaultRepsMin = o.getInt("defaultRepsMin"),
+                        defaultRepsMax = o.getInt("defaultRepsMax"), defaultRestSec = o.getInt("defaultRestSec"),
+                        homeAlternativeId = if (o.isNull("homeAlternativeId")) null else o.optString("homeAlternativeId"),
+                        alternatingGroupId = if (o.isNull("alternatingGroupId")) null else o.optString("alternatingGroupId"),
+                        environmentType = if (o.isNull("environmentType")) null else o.optString("environmentType")
+                    )
+                }
+                if (list.isNotEmpty()) dao.insertExerciseLibrary(list)
+            }
 
             // 1. Todos
             root.optJSONArray("todos")?.let { arr ->
@@ -619,7 +768,7 @@ object CloudBackupService {
             Log.d(TAG, "Restore successful for $userEmail")
             Result.success("RESTORE_SUCCESS")
         } catch (e: Exception) {
-            Log.e(TAG, "Restore failed for $userEmail", e)
+            Log.e(TAG, "Restore failed", e)
             Result.failure(e)
         }
     }

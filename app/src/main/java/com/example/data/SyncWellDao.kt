@@ -20,6 +20,9 @@ interface SyncWellDao {
     @Query("SELECT * FROM notification_settings LIMIT 1")
     fun getNotificationSettings(): Flow<NotificationSettings?>
 
+    @Query("SELECT * FROM notification_settings LIMIT 1")
+    suspend fun getNotificationSettingsDirectly(): NotificationSettings?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotificationSettings(settings: NotificationSettings)
 
@@ -52,6 +55,36 @@ interface SyncWellDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRoutineTemplateItems(items: List<RoutineTemplateItem>)
+
+    @Update
+    suspend fun updateRoutineTemplate(template: RoutineTemplate)
+
+    @Query("SELECT * FROM routine_templates ORDER BY name")
+    fun getRoutineTemplatesFlow(): Flow<List<RoutineTemplate>>
+
+    @Query("SELECT * FROM routine_template_items WHERE templateId = :templateId ORDER BY orderIndex ASC")
+    fun getRoutineTemplateItemsFlow(templateId: String): Flow<List<RoutineTemplateItem>>
+
+    @Query("SELECT * FROM routine_template_items")
+    suspend fun getAllRoutineTemplateItems(): List<RoutineTemplateItem>
+
+    @Query("DELETE FROM routine_templates WHERE id = :id")
+    suspend fun deleteRoutineTemplate(id: String)
+
+    @Query("DELETE FROM routine_templates WHERE isStarter = 1")
+    suspend fun deleteStarterTemplates()
+
+    @Update
+    suspend fun updateRoutineTemplateItem(item: RoutineTemplateItem)
+
+    @Query("DELETE FROM routine_template_items WHERE id = :id")
+    suspend fun deleteRoutineTemplateItem(id: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyRoutineItem(item: DailyRoutineItem)
+
+    @Query("DELETE FROM daily_routine_items WHERE id = :id")
+    suspend fun deleteDailyRoutineItem(id: String)
 
     @Query("DELETE FROM routine_templates")
     suspend fun clearRoutineTemplates()

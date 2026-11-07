@@ -4,10 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -35,8 +33,8 @@ import kotlinx.coroutines.launch
         SyncQueueItem::class,
         ExerciseCustomNote::class
     ],
-    version = 7,
-    exportSchema = false
+    version = 8,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun syncWellDao(): SyncWellDao
@@ -44,7 +42,22 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
-        private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE routine_templates ADD COLUMN repeatType TEXT NOT NULL DEFAULT 'WEEKLY'")
+                db.execSQL("ALTER TABLE routine_templates ADD COLUMN daysOfWeek TEXT NOT NULL DEFAULT '[1,2,3,4,5,6,0]'")
+                db.execSQL("ALTER TABLE routine_templates ADD COLUMN onceDate TEXT")
+                db.execSQL("ALTER TABLE routine_templates ADD COLUMN isStarter INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("UPDATE routine_templates SET daysOfWeek = '[1,2,3,4,5]' WHERE dayType = 'WEEKDAY'")
+                db.execSQL("UPDATE routine_templates SET daysOfWeek = '[6]' WHERE dayType = 'SATURDAY'")
+                db.execSQL("UPDATE routine_templates SET daysOfWeek = '[0]' WHERE dayType = 'SUNDAY'")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN wakeTime TEXT NOT NULL DEFAULT '07:00'")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN sleepTime TEXT NOT NULL DEFAULT '23:00'")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN workoutDays TEXT NOT NULL DEFAULT '[1,2,3,4,5]'")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN onboardingAnswered INTEGER NOT NULL DEFAULT 1")
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -53,17 +66,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "syncwell_db"
                 )
-                    .addCallback(object : RoomDatabase.Callback() {
-                        override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                            super.onCreate(db)
-                            applicationScope.launch {
-                                getDatabase(context).syncWellDao().let { dao ->
-                                    DatabaseSeeder.seedDatabase(dao, forceUpdate = true)
-                                }
-                            }
-                        }
-                    })
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

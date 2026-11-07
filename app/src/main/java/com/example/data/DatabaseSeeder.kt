@@ -2,106 +2,82 @@ package com.example.data
 
 import java.util.UUID
 
+data class VitaminChoice(val name: String, val time: String? = null)
+
+data class SetupAnswers(
+    val wakeTime: String = "07:00",
+    val sleepTime: String = "23:00",
+    val workoutDays: List<Int> = listOf(1, 3, 5), // 0 = Sunday
+    val vitamins: List<VitaminChoice> = emptyList()
+)
+
 object DatabaseSeeder {
 
-    suspend fun seedDatabase(dao: SyncWellDao, forceUpdate: Boolean = false) {
-        val existingTemplates = dao.getRoutineTemplates()
-        if (existingTemplates.isNotEmpty() && !forceUpdate) return
+    private fun shift(time: String, minutes: Int): String {
+        val (h, m) = time.split(":").map { it.toInt() }
+        val total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440
+        return "%02d:%02d".format(total / 60, total % 60)
+    }
 
-        if (forceUpdate) {
-            dao.clearRoutineTemplates()
-            dao.clearRoutineTemplateItems()
-            dao.clearExerciseLibrary()
+    /** Pure: builds the starter templates and their items from the onboarding answers. */
+    fun buildStarterTemplates(a: SetupAnswers): Pair<List<RoutineTemplate>, List<RoutineTemplateItem>> {
+        val w = a.wakeTime
+        val s = a.sleepTime
+        val templates = mutableListOf<RoutineTemplate>()
+        val items = mutableListOf<RoutineTemplateItem>()
+
+        fun add(name: String, repeat: String, days: List<Int>, rows: List<Triple<String, String, String>>) {
+            val id = UUID.randomUUID().toString()
+            templates += RoutineTemplate(id = id, name = name, repeatType = repeat, daysOfWeek = days.joinToString(",", "[", "]"), isStarter = true)
+            rows.forEachIndexed { i, (title, category, time) ->
+                items += RoutineTemplateItem(UUID.randomUUID().toString(), id, title, category, i + 1, time)
+            }
         }
 
-        val weekdayId = UUID.randomUUID().toString()
-        val saturdayId = UUID.randomUUID().toString()
-        val sundayId = UUID.randomUUID().toString()
+        add("Daily Essentials", "DAILY", listOf(1, 2, 3, 4, 5, 6, 0), listOf(
+            Triple("Wake up & drink water", "HYGIENE", w),
+            Triple("Morning hygiene", "HYGIENE", shift(w, 30)),
+            Triple("Breakfast", "DIET", shift(w, 60)),
+            Triple("Focus block", "STUDY", shift(w, 120)),
+            Triple("Lunch", "DIET", shift(w, 300)),
+            Triple("Afternoon focus block", "STUDY", shift(w, 360)),
+            Triple("Hydration check", "HYGIENE", shift(w, 420)),
+            Triple("Dinner", "DIET", shift(s, -180)),
+            Triple("Evening walk", "HEALTH", shift(s, -150)),
+            Triple("Wind down & screens off", "PREP", shift(s, -45)),
+            Triple("Sleep", "HEALTH", s)
+        ))
+        if (a.workoutDays.isNotEmpty()) {
+            add("Workout Days", "WEEKLY", a.workoutDays, listOf(
+                Triple("Warm-up", "WORKOUT", shift(w, 540)),
+                Triple("Workout", "WORKOUT", shift(w, 555)),
+                Triple("Cool-down & shower", "HYGIENE", shift(w, 630))
+            ))
+        }
+        if (a.vitamins.isNotEmpty()) {
+            add("Supplements", "DAILY", listOf(1, 2, 3, 4, 5, 6, 0), a.vitamins.map { v ->
+                val time = v.time ?: when {
+                    v.name.contains("D3", true) || v.name.contains("K2", true) -> shift(w, 310)
+                    v.name.contains("Omega", true) -> shift(w, 315)
+                    v.name.contains("Magnesium", true) -> shift(s, -45)
+                    else -> shift(w, 75)
+                }
+                Triple(v.name, "SUPPLEMENT", time)
+            })
+        }
+        return templates to items
+    }
 
-        // 1. INSTANTIATE MASTER SYSTEM ROUTINE LAYOUTS
-        dao.insertRoutineTemplate(RoutineTemplate(id = weekdayId, name = "Standard Weekday Runbook", dayType = "WEEKDAY", isActive = true))
-        dao.insertRoutineTemplate(RoutineTemplate(id = saturdayId, name = "Saturday Academic Sprint & Veg-Only", dayType = "SATURDAY", isActive = true))
-        dao.insertRoutineTemplate(RoutineTemplate(id = sundayId, name = "Sunday Badminton & Reset", dayType = "SUNDAY", isActive = true))
+    /** Replaces starter routines (user-created ones are untouched). */
+    suspend fun seedStarterRoutines(dao: SyncWellDao, answers: SetupAnswers = SetupAnswers()) {
+        dao.deleteStarterTemplates()
+        val (templates, items) = buildStarterTemplates(answers)
+        templates.forEach { dao.insertRoutineTemplate(it) }
+        dao.insertRoutineTemplateItems(items)
+    }
 
-        // 2. COMPREHENSIVE ROUTINE SEEDING (22+ Items)
-        val templateItems = listOf(
-            // --- WEEKDAY RUNBOOK (Monday-Friday) ---
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Wake cleanly (8:00 AM) & 500ml water", "HYGIENE", 1, "08:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Morning Fresh (Simple Wash, Pat Dry)", "HYGIENE", 2, "08:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Morning Skincare (Niacinamide, Moisturizer, SPF)", "SKINCARE", 3, "08:35"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Breakfast: 2 Whole + 2 Egg Whites, Oats, Fruit", "DIET", 4, "08:45"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Morning Stack: Multivitamin & Omega-3 with fat", "SUPPLEMENT", 5, "09:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Morning Focus Study Block 1 (2h 20m high-intensity)", "STUDY", 6, "09:10"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Work-Prep: Shaker bottle + Whey pack + Water sip", "PREP", 7, "11:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Commute to Office (Avoid fried snacks / sugar)", "HYGIENE", 8, "11:50"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Gym Mode: Active Warm-up (Shoulders/Hips/Knees)", "WORKOUT", 9, "12:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Gym Training: Compound Lifts (8-12 reps, 80 min)", "WORKOUT", 10, "12:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Cool post-gym shower (No hot water on hair!)", "HYGIENE", 11, "13:50"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Post-Gym Skincare (Simple Wash + Moisturizer)", "SKINCARE", 12, "14:10"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Precision Lunch: Paneer 100g, Dal, Curd, Salad", "DIET", 13, "14:20"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Lunch Supplement: Carbamide D3+K2 (Before 4PM)", "SUPPLEMENT", 14, "14:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Afternoon Hydration (500ml) & Office Focus", "HYGIENE", 15, "15:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Evening Protein (1 scoop whey + fruit)", "SUPPLEMENT", 16, "17:20"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Evening Study Sprint / Work Overflow", "STUDY", 17, "17:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Return Commute: 2.5 km brisk walk back home", "WORKOUT", 18, "18:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Protein Dinner (Chicken/Eggs/Soya + Curd)", "DIET", 19, "20:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Digestion Guard: 15m walk (Stay upright!)", "HEALTH", 20, "21:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Night Study Block (Review & Topics)", "STUDY", 21, "21:45"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Rosemary/Lavender Scalp massage & Hair Care", "HAIRCARE", 22, "22:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Night Skincare (Salicylic wash + Moisturizer)", "SKINCARE", 23, "22:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Magnesium Glycinate for CNS Calm", "SUPPLEMENT", 24, "23:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Night-Before Oats Prep & Tomorrow's Shaker", "PREP", 25, "23:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), weekdayId, "Sleep Prep: Device Blackout & Dim Lights", "HEALTH", 26, "23:30"),
-
-            // --- SATURDAY RUNBOOK (Veg-Only, Heavy Study) ---
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Wake up (8:30 AM) — No Alarm Snooze", "HYGIENE", 1, "08:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "🥗 VEG-ONLY DAY — No Meat / Chicken / Fish", "DIET", 2, "08:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Drink 500ml waking water", "HYGIENE", 3, "08:32"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Morning Skincare (Wash, Niacinamide, SPF)", "SKINCARE", 4, "08:40"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Breakfast — Eggs, Oats, Seasonal Fruit", "DIET", 5, "09:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Morning Stack: Multivitamin + Omega-3", "SUPPLEMENT", 6, "09:10"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Morning Study Sprint Block 1 (3h 50m)", "STUDY", 7, "09:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Lunch — Rice, Dal, Paneer 100g, Curd, Salad", "DIET", 8, "13:20"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Lunch Supplement: Vitamin D3+K2 (Before 4PM)", "SUPPLEMENT", 9, "13:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Study Sprint Block 2", "STUDY", 10, "14:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Hydration Check — 500ml Water", "HYGIENE", 11, "15:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Whey Protein (Mix with Milk for Veg Day)", "SUPPLEMENT", 12, "17:20"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Study Sprint Block 3", "STUDY", 13, "17:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Dinner — Paneer / Dal / Soya (Zero Meat)", "DIET", 14, "19:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Digestion Guard: Stay Upright 1 Hour", "HEALTH", 15, "20:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Study Sprint Block 4 (Evening Focus)", "STUDY", 16, "20:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Night Skincare (Salicylic wash + Moisturizer)", "SKINCARE", 17, "22:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Night Supplement: Magnesium Glycinate", "SUPPLEMENT", 18, "22:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), saturdayId, "Device Blackout & Sleep Prep", "HEALTH", 19, "23:00"),
-
-            // --- SUNDAY RUNBOOK (Badminton, Calibration) ---
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Wake up (7:00 AM Sharp)", "HYGIENE", 1, "07:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Drink 500ml waking water", "HYGIENE", 2, "07:05"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Quick face rinse — No full skincare yet", "SKINCARE", 3, "07:10"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Travel to Badminton Court (40-min commute)", "PREP", 4, "07:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "🏸 Badminton Session (8:00 AM – 10:00 AM)", "WORKOUT", 5, "08:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Return Commute (40-min walk/transit)", "PREP", 6, "10:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Post-Sport Cool Shower (No Hot on Scalp)", "HYGIENE", 7, "10:45"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Full Morning Skincare (Niacinamide + SPF)", "SKINCARE", 8, "11:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "High-Protein Post-Sport Brunch (Eggs, Oats, Paneer)", "DIET", 9, "11:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Morning Supplements: Multivitamin + Omega-3", "SUPPLEMENT", 10, "11:25"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Study Block 1 (4h Target Focus)", "STUDY", 11, "12:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Lunch: Rice, Dal, Paneer, Curd, Salad", "DIET", 12, "16:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Lunch Supplement: D3+K2 (Before 4PM)", "SUPPLEMENT", 13, "16:05"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Study Block 2 (7h 40m Target Focus)", "STUDY", 14, "17:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Whey Protein (5:20 PM)", "SUPPLEMENT", 15, "17:20"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Hydration Check — 500ml Water", "HYGIENE", 16, "18:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "📅 Weekly Plan Calibration Modal (9:00 PM)", "PREP", 17, "21:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Dinner — Chicken / Egg Curry / Chole / Soya", "DIET", 18, "19:30"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Digestion Guard — Upright 1 Hour + 10-min Walk", "HEALTH", 19, "20:10"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Night Skincare (Salicylic wash + Moisturizer)", "SKINCARE", 20, "22:00"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Night Supplement: Magnesium Glycinate", "SUPPLEMENT", 21, "22:15"),
-            RoutineTemplateItem(UUID.randomUUID().toString(), sundayId, "Device Blackout & Sleep Prep (Target: 11:45 PM)", "HEALTH", 22, "23:00")
-        )
-
-        dao.insertRoutineTemplateItems(templateItems)
-
-        // 3. SEED CORE EXERCISE LIBRARY (Perfect Workouts)
+    /** Inserts built-in exercises that are missing; never deletes custom ones. */
+    suspend fun seedExercises(dao: SyncWellDao) {
         val exercises = listOf(
             // --- COMMERCIAL GYM: PUSH ---
             ExerciseLibraryItem("ex_pushups", "Pushups", "CHEST", 1, 15, 100, 60, "home_pushups", null),
@@ -167,16 +143,7 @@ object DatabaseSeeder {
             ExerciseLibraryItem("home_plank", "Plank", "ABS", 3, 45, 60, 60, null, null, "HOME")
         )
 
-        dao.insertExerciseLibrary(exercises)
-
-        // 4. SEED WORKOUT PATTERN ASSIGNMENTS
-        val workouts = listOf(
-            WorkoutTemplate(id = UUID.randomUUID().toString(), name = "Heavy Push Lifts", dayType = "MONDAY"),
-            WorkoutTemplate(id = UUID.randomUUID().toString(), name = "Heavy Pull Lifts", dayType = "TUESDAY"),
-            WorkoutTemplate(id = UUID.randomUUID().toString(), name = "High-Load Legs + Core", dayType = "WEDNESDAY"),
-            WorkoutTemplate(id = UUID.randomUUID().toString(), name = "Lighter Push Velocity Selections", dayType = "THURSDAY"),
-            WorkoutTemplate(id = UUID.randomUUID().toString(), name = "Lighter Pull Velocity Selections", dayType = "FRIDAY")
-        )
-        dao.insertWorkoutTemplates(workouts)
+        val have = dao.getExerciseLibrary().map { it.id }.toSet()
+        dao.insertExerciseLibrary(exercises.filter { it.id !in have })
     }
 }

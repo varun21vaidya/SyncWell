@@ -40,108 +40,22 @@ data class RoutineDetailedInfo(
 )
 
 fun getRoutineDetailedGuide(item: DailyRoutineItem): RoutineDetailedInfo {
-    val title = item.title.lowercase()
-    val category = item.category.uppercase()
-    return when {
-        title.contains("skin") || title.contains("skincare") || category == "SKINCARE" -> {
-            RoutineDetailedInfo(
-                description = "Stable, high-quality skin routine with dermatologically proven ingredients. Avoids product switching and helps maintain skin barrier safety.",
-                longFormGuide = listOf(
-                    "Morning: Wash face with Simple Refreshing Facial Wash. Pat face dry gently.",
-                    "Apply Minimalist 10% Niacinamide Serum evenly and wait for absorption.",
-                    "Apply Deconstruct Oil-Free Moisturizer to establish hydration shield.",
-                    "Apply Re'equil Ultra Matte Dry Touch Sunscreen before going outdoors.",
-                    "Night: Cleansing with Minimalist 2% Salicylic Acid + LHA Cleanser.",
-                    "Apply Niacinamide and Moisturizer. Optional 2% Salicylic Acid on nose/forehead (2-3 nights max)."
-                ),
-                frequency = "Twice Daily (Morning & Night)",
-                targetMetrics = "Clear skin with reduced inflammation and stable product usage."
-            )
-        }
-        title.contains("hair") || title.contains("haircare") || category == "HAIRCARE" -> {
-            RoutineDetailedInfo(
-                description = "Focused hair and scalp nutrition. Strengthens hair follicles, reduces scalp irritation, and avoids drying of wavy textures.",
-                longFormGuide = listOf(
-                    "Avoid using hot water. Rinse with cool or lukewarm water only.",
-                    "Shampoo limited to 2 times/week max to avoid stripping natural oils.",
-                    "Use conditioner on mid-lengths only, never on scalp.",
-                    "Pat dry with a soft microfibre towel or cotton T-shirt without aggressive rubbing.",
-                    "Detangle gently when wet. Use rosemary + lavender oil massaged into scalp at night on oiling days (2-3 times/week)."
-                ),
-                frequency = "Daily Care | 2-3x/week Oiling & 2x/week Shampooing",
-                targetMetrics = "Reduced scalp irritation, reduced hair shedding, and healthy wave definition."
-            )
-        }
-        title.contains("supplement") || title.contains("multivitamin") || title.contains("magnesium") || title.contains("omega") || title.contains("d3") -> {
-            RoutineDetailedInfo(
-                description = "Targeted vitamin and mineral assimilation supporting energy production, cognitive capacity, CNS health, and deeper sleep cycles.",
-                longFormGuide = listOf(
-                    "Breakfast: Take Ace Blend Multivitamin (1 capsule) & Naturaltein Omega-3 (1 softgel) with dietary fats.",
-                    "Lunch: Take Carbamide Forte D3 + K2 (1 tablet) before 4:00 PM for maximum calcium absorption and melatonin protection.",
-                    "Bedtime: Take Naturaltein Magnesium Glycinate (1 tablet) 45-60 min before sleep. Lowers core temperature and calms the central nervous system.",
-                    "Always consume with actual food to maximize absorption of fat-soluble vitamins."
-                ),
-                frequency = "Daily with designated meals",
-                targetMetrics = "Optimal micronutrient absorption, cognitive performance support, and improved deep sleep."
-            )
-        }
-        title.contains("diet") || title.contains("meal") || title.contains("breakfast") || title.contains("lunch") || title.contains("dinner") || title.contains("protein") || title.contains("hydration") || title.contains("water") || title.contains("veg") -> {
-            RoutineDetailedInfo(
-                description = "Macro-nutrient integrity emphasizing high-protein, calorie compliance, clean hydration, and optimal digestion blocks.",
-                longFormGuide = listOf(
-                    "Protein Target: Reach 130–160 g daily across solid and liquid sources.",
-                    "Morning: Drink 500 ml waking water immediately. Breakfast includes 2 whole eggs, 2 egg whites, and overnight soaked oats.",
-                    "Lunch: Control rice portion, load up dal, add >=100g paneer, 1 bowl curd, and cucumber/carrot salads.",
-                    "Evening: 1 scoop Whey Protein with water or milk and 1 fruit.",
-                    "Dinner: Prioritize animal or high-quality vegetable protein (chicken, egg, chana, or mushroom paired with 50g soya chunks backup).",
-                    "Saturday Veg-Only: No meat/chicken/fish. Maintain protein via paneer, dal, soya, curd, chana, eggs, and whey.",
-                    "Digestion: Stay upright for 1 hour after dinner. Do a light 10-15 min post-meal walk."
-                ),
-                frequency = "Daily (Continuous Tracking)",
-                targetMetrics = "Protein: 130-160 g | Water: 3.5-4 L | No lying down post-dinner"
-            )
-        }
-        title.contains("gym") || title.contains("workout") || title.contains("walk") || title.contains("badminton") || category == "WORKOUT" -> {
-            RoutineDetailedInfo(
-                description = "Cardio-respiratory and weight progression training designed to maximize lean building and daily activity tracking.",
-                longFormGuide = listOf(
-                    "Gym Workouts: Push/Pull/Legs rotation, 4-5 times per week, taking 55-70 mins max.",
-                    "Movement Goals: Brisk commute walk of 2.5 km from office daily.",
-                    "Sunday Badminton: 8:00–10:00 AM (inclusive of 40-minute non-negotiable transport each way).",
-                    "Saturday: Hometown bodyweight workout or 20 min HIIT / 40 min running.",
-                    "Ensure a thorough 5-10 min dynamic warmup before lifting on compounds."
-                ),
-                frequency = "4-5x Weight training | Daily brisk walking | Sunday Badminton",
-                targetMetrics = "Body weight: 73-74 kg | Daily movement target hit"
-            )
-        }
-        title.contains("study") || title.contains("focus") || category == "STUDY" -> {
-            RoutineDetailedInfo(
-                description = "Academic rigor program aiming for peak focus blocks and consistent daily revision without cognitive exhaustion.",
-                longFormGuide = listOf(
-                    "Weekly Target: Achieve 55 hrs 20 mins total study time (Weekday average: 6h 10m, Weekend average: 12h 15m).",
-                    "Morning Study Block: 9:10 AM - 11:30 AM (2h 20m) for hardest subjects and new concepts.",
-                    "Evening Study Block: Post-work until 12:40 AM for practice problems and revision.",
-                    "Focus Method: Use 50-minute fully isolated study blocks followed by 10-minute break recovery cycles.",
-                    "Remove phone distractions. Keep workspace clean and organized."
-                ),
-                frequency = "Daily (High impact)",
-                targetMetrics = "55h 20m weekly study target | Rested sleep transitions at 1:00 AM"
-            )
-        }
-        else -> {
-            RoutineDetailedInfo(
-                description = "Core life productivity habit designated in the SyncWell lifestyle roadmap to support balanced wellness.",
-                longFormGuide = listOf(
-                    "Follow the top-down sequential routine in the daily checklist.",
-                    "Check off items only upon execution. You can toggle/uncheck if done erroneously.",
-                    "Maintain steady consistency; focus on daily repeatability over perfect schedules."
-                ),
-                frequency = "Daily / Weekly Designation",
-                targetMetrics = "100% Habit adherence under vacation safety freeze rules."
-            )
-        }
+    val (description, tips) = when (item.category) {
+        "DIET" -> "A meal in your plan." to listOf("Aim for a balanced plate with protein, vegetables and whole foods.", "Eat slowly and stop when comfortably full.")
+        "WORKOUT" -> "Physical activity in your plan." to listOf("Warm up first, then work at an effort you can sustain.", "Log your sets in the Workout tab. Starting light is fine.")
+        "STUDY" -> "A focused work or study block." to listOf("Silence notifications and pick one task.", "Take a short break after each block.")
+        "SUPPLEMENT" -> "A vitamin or supplement you chose." to listOf("Take it at the time you set, usually with food.", "Check with a health professional if you are unsure what suits you.")
+        "HYGIENE" -> "A personal care or hydration habit." to listOf("Keep it short and consistent.", "Drink water through the day.")
+        "HEALTH" -> "A health or recovery habit." to listOf("Light movement and a regular sleep time support recovery.")
+        "PREP" -> "A preparation step for what comes next." to listOf("A few minutes now saves effort later.")
+        else -> "A custom item in your routine." to listOf("Edit or remove it any time from Manage routines.")
     }
+    return RoutineDetailedInfo(
+        description = description,
+        longFormGuide = tips,
+        frequency = "As scheduled in your routine",
+        targetMetrics = "Tick it off to build your streak."
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,11 +70,17 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
     var selectedRoutineItem by remember { mutableStateOf<DailyRoutineItem?>(null) }
     var showCircadianWarning by remember { mutableStateOf(false) }
     var selectedSuppName by remember { mutableStateOf("") }
+    var showManage by remember { mutableStateOf(false) }
 
     val proteinConfirmationTask by viewModel.proteinConfirmationTask.collectAsState()
 
     BackHandler(enabled = selectedRoutineItem != null) {
         selectedRoutineItem = null
+    }
+
+    if (showManage) {
+        ManageRoutinesScreen(viewModel) { showManage = false }
+        return
     }
 
     if (selectedRoutineItem != null) {
@@ -203,7 +123,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = "Weekly Runbooks",
+                        text = "Daily Routine",
                         color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Black
@@ -225,6 +145,8 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                     )
                 }
             }
+
+            TextButton(onClick = { showManage = true }) { Text("MANAGE ROUTINES", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
 
             // Vacation Mode Alert status
             if (isVacationActive) {
@@ -272,7 +194,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                             modifier = Modifier.size(64.dp)
                         )
                         Text(
-                            text = "No routines spawned today yet.",
+                            text = "No routine scheduled today. Tap MANAGE ROUTINES to add one.",
                             color = Slate400,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
@@ -323,68 +245,42 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                                     letterSpacing = 1.sp
                                 )
 
-                                val supplementsList = listOf(
-                                    "Ace Blend Multivitamin" to "Breakfast Supp",
-                                    "Carbamide Forte D3+K2" to "Post-Lunch Supp",
-                                    "Naturaltein Omega-3" to "Dietary Fat Supp",
-                                    "Magnesium Glycinate" to "Bedtime Supp"
-                                )
+                                val supplementsList = activeRoutineItems
+                                    .filter { it.category == "SUPPLEMENT" }
+                                    .map { it.title to (it.scheduledTime ?: "Supplement") }
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    supplementsList.take(2).forEach { (name, label) ->
-                                        Card(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable {
-                                                    viewModel.addSupplement(name) {
-                                                        selectedSuppName = name
-                                                        showCircadianWarning = true
-                                                    }
-                                                }
-                                                .testTag("supp_quick_log_$label"),
-                                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
-                                            border = BorderStroke(1.dp, OledBorder)
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(10.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
-                                                Text(label, color = Slate400, fontSize = 9.sp)
-                                            }
-                                        }
-                                    }
+                                if (supplementsList.isEmpty()) {
+                                    Text("Add a vitamin in Manage routines (category SUPPLEMENT) to log it here.", color = Slate400, fontSize = 11.sp)
                                 }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    supplementsList.drop(2).forEach { (name, label) ->
-                                        Card(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable {
-                                                    viewModel.addSupplement(name) {
-                                                        selectedSuppName = name
-                                                        showCircadianWarning = true
+                                supplementsList.chunked(2).forEach { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rowItems.forEach { (name, label) ->
+                                            Card(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clickable {
+                                                        viewModel.addSupplement(name) {
+                                                            selectedSuppName = name
+                                                            showCircadianWarning = true
+                                                        }
                                                     }
-                                                }
-                                                .testTag("supp_quick_log_$label"),
-                                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
-                                            border = BorderStroke(1.dp, OledBorder)
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(10.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                    .testTag("supp_quick_log_$label"),
+                                                colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
+                                                border = BorderStroke(1.dp, OledBorder)
                                             ) {
-                                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
-                                                Text(label, color = Slate400, fontSize = 9.sp)
+                                                Column(
+                                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Text(name, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary, maxLines = 2)
+                                                    Text(label, color = Slate400, fontSize = 9.sp)
+                                                }
                                             }
                                         }
+                                        if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                                     }
                                 }
                             }
