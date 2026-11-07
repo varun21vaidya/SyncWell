@@ -9,6 +9,8 @@ import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -50,15 +52,19 @@ object DriveBackupClient {
         return result.accessToken ?: throw IOException("Google did not return a Drive access token")
     }
 
-    suspend fun upload(token: String, json: String) = withContext(Dispatchers.IO) {
-        val existingId = findBackupId(token)
-        val fileId = existingId ?: createEmptyFile(token)
-        val request = Request.Builder()
-            .url("$UPLOAD_URL/$fileId?uploadType=media")
-            .header("Authorization", "Bearer $token")
-            .patch(json.toRequestBody(JSON))
-            .build()
-        execute(request) { }
+    // find-then-create must not run twice at once (manual + nightly backup would create two files)
+    private val uploadLock = Mutex()
+
+    suspend fun upload(token: String, json: String) = uploadLock.withLock {
+        withContext(Dispatchers.IO) {
+            val fileId = findBackupId(token) ?: createEmptyFile(token)
+            val request = Request.Builder()
+                .url("$UPLOAD_URL/$fileId?uploadType=media")
+                .header("Authorization", "Bearer $token")
+                .patch(json.toRequestBody(JSON))
+                .build()
+            execute(request) { }
+        }
     }
 
     /** Returns the backup JSON, or null when this account has no backup yet. */

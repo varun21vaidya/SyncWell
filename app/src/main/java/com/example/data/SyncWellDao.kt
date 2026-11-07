@@ -56,9 +56,6 @@ interface SyncWellDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRoutineTemplateItems(items: List<RoutineTemplateItem>)
 
-    @Update
-    suspend fun updateRoutineTemplate(template: RoutineTemplate)
-
     @Query("SELECT * FROM routine_templates ORDER BY name")
     fun getRoutineTemplatesFlow(): Flow<List<RoutineTemplate>>
 
@@ -74,9 +71,6 @@ interface SyncWellDao {
     @Query("DELETE FROM routine_templates WHERE isStarter = 1")
     suspend fun deleteStarterTemplates()
 
-    @Update
-    suspend fun updateRoutineTemplateItem(item: RoutineTemplateItem)
-
     @Query("DELETE FROM routine_template_items WHERE id = :id")
     suspend fun deleteRoutineTemplateItem(id: String)
 
@@ -88,9 +82,6 @@ interface SyncWellDao {
 
     @Query("DELETE FROM routine_templates")
     suspend fun clearRoutineTemplates()
-
-    @Query("DELETE FROM routine_template_items")
-    suspend fun clearRoutineTemplateItems()
 
     // Daily Routines
     @Query("SELECT * FROM daily_routines WHERE date = :date LIMIT 1")
@@ -131,12 +122,6 @@ interface SyncWellDao {
     suspend fun updateWorkoutSessionExerciseTargets(id: String, reps: Int, weight: Double)
 
     // Workout Templates
-    @Query("SELECT * FROM workout_templates")
-    fun getWorkoutTemplates(): Flow<List<WorkoutTemplate>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertWorkoutTemplates(templates: List<WorkoutTemplate>)
-
     // Exercise Library
     @Query("SELECT * FROM exercise_library")
     suspend fun getExerciseLibrary(): List<ExerciseLibraryItem>

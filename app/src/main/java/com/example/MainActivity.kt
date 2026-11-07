@@ -172,6 +172,8 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
             } else if (event == Lifecycle.Event.ON_RESUME) {
                 // Return to app -> cancel any pending checks
                 viewModel.cancelAttentionCheck()
+                // The process can outlive midnight, so re-read today's date on every resume
+                com.example.service.DayBoundaryManager.refreshTargetDate()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

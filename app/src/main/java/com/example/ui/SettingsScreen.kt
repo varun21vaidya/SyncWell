@@ -382,6 +382,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                     Switch(
                         checked = backupEnabled,
                         onCheckedChange = { viewModel.setBackupEnabled(it) },
+                        enabled = user != null && user != "Offline_User", // backup needs a Google account
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = EmeraldGlow,
                             checkedTrackColor = EmeraldDim

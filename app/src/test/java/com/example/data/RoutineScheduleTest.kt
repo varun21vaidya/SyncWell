@@ -39,6 +39,23 @@ class RoutineScheduleTest {
         assertEquals(listOf(true, false, false), out.map { it.isDone })
     }
 
+    @Test fun pastMidnightItemsSortAfterTheDayStarts() {
+        val items = listOf(
+            RoutineTemplateItem("1", "d", "Sleep", "HEALTH", 1, "00:30"),
+            RoutineTemplateItem("2", "d", "Wake", "HYGIENE", 2, "08:00"),
+            RoutineTemplateItem("3", "d", "Wind down", "PREP", 3, "23:45")
+        )
+        assertEquals(listOf("Wake", "Wind down", "Sleep"), RoutineSchedule.buildDayItems("r", items, wakeTime = "08:00").map { it.title })
+    }
+
+    @Test fun nightShiftWakeKeepsMorningItemsFirst() {
+        val items = listOf(
+            RoutineTemplateItem("1", "d", "Lunch", "DIET", 1, "01:00"),
+            RoutineTemplateItem("2", "d", "Wake", "HYGIENE", 2, "20:00")
+        )
+        assertEquals(listOf("Wake", "Lunch"), RoutineSchedule.buildDayItems("r", items, wakeTime = "20:00").map { it.title })
+    }
+
     @Test fun starterWorkoutOnlyOnChosenDaysAndVitaminsIncluded() {
         val (templates, items) = DatabaseSeeder.buildStarterTemplates(
             SetupAnswers("06:30", "22:30", listOf(2, 4), listOf(VitaminChoice("Magnesium"), VitaminChoice("Zinc", "10:00")))

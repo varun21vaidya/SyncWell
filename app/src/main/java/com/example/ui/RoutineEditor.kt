@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -107,7 +108,7 @@ private fun TemplateDialog(initial: RoutineTemplate?, onSave: (RoutineTemplate) 
 }
 
 @Composable
-private fun EditRow(title: String, subtitle: String, onUp: () -> Unit, onDown: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun EditRow(title: String, subtitle: String, onUp: (() -> Unit)?, onDown: (() -> Unit)?, onEdit: () -> Unit, onDelete: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceTier2).padding(start = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -116,8 +117,10 @@ private fun EditRow(title: String, subtitle: String, onUp: () -> Unit, onDown: (
             Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             Text(subtitle, color = Slate400, fontSize = 10.sp)
         }
-        TextButton(onClick = onUp, contentPadding = PaddingValues(0.dp), modifier = Modifier.width(32.dp)) { Text("↑") }
-        TextButton(onClick = onDown, contentPadding = PaddingValues(0.dp), modifier = Modifier.width(32.dp)) { Text("↓") }
+        if (onUp != null && onDown != null) {
+            TextButton(onClick = onUp, contentPadding = PaddingValues(0.dp), modifier = Modifier.width(32.dp)) { Text("↑") }
+            TextButton(onClick = onDown, contentPadding = PaddingValues(0.dp), modifier = Modifier.width(32.dp)) { Text("↓") }
+        }
         TextButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Edit", fontSize = 12.sp) }
         TextButton(onClick = onDelete, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("✕", color = RoseCrimson) }
     }
@@ -164,8 +167,9 @@ fun ManageRoutinesScreen(viewModel: SyncWellViewModel, onBack: () -> Unit) {
 
         item { Spacer(Modifier.height(8.dp)); Text("MY ROUTINES (repeat on a schedule)", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
         items(templates, key = { it.id }) { t ->
+            val expired = t.repeatType == "ONCE" && (t.onceDate ?: "") < DayBoundaryManager.currentTargetDate.value
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceTier2).clickable { openId = t.id }.padding(start = 12.dp),
+                Modifier.fillMaxWidth().alpha(if (expired) 0.45f else 1f).clip(RoundedCornerShape(12.dp)).background(SurfaceTier2).clickable { openId = t.id }.padding(start = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
@@ -240,9 +244,9 @@ private fun TemplateItemsEditor(viewModel: SyncWellViewModel, template: RoutineT
                 }
             }
         }
-        itemsIndexed(items, key = { _, it -> it.id }) { i, it ->
+        items(items, key = { it.id }) { it ->
             EditRow(it.title, "${it.scheduledTime ?: "any time"} · ${it.category}",
-                { viewModel.moveTemplateItem(items, i, -1); changed = true }, { viewModel.moveTemplateItem(items, i, 1); changed = true },
+                null, null, // the day list is ordered by time, so moving items inside a routine would do nothing
                 { editing = it }, { viewModel.deleteTemplateItem(it.id); changed = true })
         }
         item { OutlinedButton(onClick = { adding = true }) { Text("+ Add item") } }

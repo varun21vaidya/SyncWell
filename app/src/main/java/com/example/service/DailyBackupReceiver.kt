@@ -19,7 +19,8 @@ class DailyBackupReceiver : BroadcastReceiver() {
                 val dao = AppDatabase.getDatabase(context).syncWellDao()
                 val settings = dao.getAppSettingsDirectly()
                 
-                if (settings != null && settings.backupEnabled && !settings.firebaseUid.isNullOrBlank()) {
+                // "Offline_User" has no Google account, and a background job cannot show the Drive consent screen
+                if (settings != null && settings.backupEnabled && settings.firebaseUid?.contains("@") == true) {
                     Log.d("SyncWell", "Executing scheduled backup for ${settings.firebaseUid}")
                     val result = CloudBackupService.performBackup(context, dao, settings.firebaseUid)
                     result.fold(

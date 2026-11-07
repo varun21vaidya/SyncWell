@@ -164,7 +164,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val _isCloudBackupSyncInProgress = MutableStateFlow(false)
     val isCloudBackupSyncInProgress: StateFlow<Boolean> = _isCloudBackupSyncInProgress.asStateFlow()
 
-    private val _lastSuccessfulTransmissionTimestamp = MutableStateFlow<String?>(null)
+    // also written by the 9 PM background backup, so read it back on start
+    private val _lastSuccessfulTransmissionTimestamp = MutableStateFlow(prefs.getString("last_backup_iso", null))
     val lastSuccessfulTransmissionTimestamp: StateFlow<String?> = _lastSuccessfulTransmissionTimestamp.asStateFlow()
 
     // FEATURE 14: Backup test result feedback
@@ -183,13 +184,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     val proteinConfirmationTask: StateFlow<DailyRoutineItem?> = _proteinConfirmationTask.asStateFlow()
 
     private var todayDataJob: Job? = null
-
-    fun getTodayDayName(): String {
-        val days = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-        val calendar = java.util.Calendar.getInstance()
-        val index = calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1
-        return days.getOrElse(index) { "Monday" }
-    }
 
     init {
         viewModelScope.launch {
@@ -335,7 +329,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val routineId = UUID.randomUUID().toString()
         dao.insertDailyRoutine(DailyRoutine(routineId, dateKey, matching.firstOrNull()?.id, 0.0, isVac))
         val templateItems = matching.flatMap { dao.getRoutineTemplateItems(it.id) }
-        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles)
+        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles, dao.getAppSettingsDirectly()?.wakeTime ?: "00:00")
         if (items.isNotEmpty()) dao.insertDailyRoutineItems(items)
     }
 
@@ -646,12 +640,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setBackupEnabled(enabled: Boolean) {
-        _backupEnabled.value = enabled
         viewModelScope.launch {
-            val settings = dao.getAppSettingsDirectly()
-            if (settings != null) {
-                dao.insertAppSettings(settings.copy(backupEnabled = enabled))
-            }
+            val settings = dao.getAppSettingsDirectly() ?: return@launch
+            val on = enabled && settings.firebaseUid?.contains("@") == true // needs a signed-in Google account
+            _backupEnabled.value = on
+            dao.insertAppSettings(settings.copy(backupEnabled = on))
         }
     }
 
@@ -1270,15 +1263,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun saveTemplateItem(item: RoutineTemplateItem) { viewModelScope.launch { dao.insertRoutineTemplateItems(listOf(item)) } }
 
     fun deleteTemplateItem(id: String) { viewModelScope.launch { dao.deleteRoutineTemplateItem(id) } }
-
-    fun moveTemplateItem(items: List<RoutineTemplateItem>, index: Int, delta: Int) {
-        val j = index + delta
-        if (j !in items.indices) return
-        viewModelScope.launch {
-            dao.updateRoutineTemplateItem(items[index].copy(orderIndex = items[j].orderIndex))
-            dao.updateRoutineTemplateItem(items[j].copy(orderIndex = items[index].orderIndex))
-        }
-    }
 
     private suspend fun refreshTodayCompletion() {
         val dateKey = DayBoundaryManager.currentTargetDate.value
