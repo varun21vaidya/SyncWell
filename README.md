@@ -1,21 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# SyncWell
 
-# Run and deploy your AI Studio app
+Android app (Kotlin, Jetpack Compose, Room) for daily routines, workouts, focus timers, to-dos, water, supplements and weight. Data lives on the device. Optional Google sign-in backs it up to a hidden folder in the user's own Google Drive.
 
-This contains everything you need to run your app locally.
+## Build
 
-View your app in AI Studio: https://ai.studio/apps/96f8049c-7d2e-44ef-b50c-d67443df89b5
+```
+./gradlew :app:assembleDebug
+./gradlew :app:testDebugUnitTest
+./gradlew :app:assembleRelease
+```
 
-## Run Locally
+Use Java 17. Without signing variables, `assembleRelease` signs with the debug key (local R8 checks only; Play rejects it).
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+## Release signing
 
+Set `KEYSTORE_PATH`, `STORE_PASSWORD` and `KEY_PASSWORD` (key alias `upload`) before building the Play bundle.
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+## Google setup (needed for sign-in and backup)
+
+1. Enable the Google Drive API in the Google Cloud project.
+2. OAuth consent screen: add the `drive.appdata` scope; set to "In production" for release.
+3. Create an Android OAuth client for package `com.syncwell.app` with the SHA-1 of the debug, upload and Play App Signing keys.
+4. The web client ID is in `app/src/main/res/values/strings.xml` (`google_web_client_id`).
+
+## Policies
+
+`PRIVACY_POLICY.md` and `TERMS_OF_SERVICE.md` are drafts. Fill the placeholders and host them at a public URL for Play.
