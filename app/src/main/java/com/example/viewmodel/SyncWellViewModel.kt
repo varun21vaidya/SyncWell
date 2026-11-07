@@ -8,6 +8,7 @@ import com.example.data.*
 import com.example.service.AnalyticsComputationService
 import com.example.service.CloudBackupService
 import com.example.service.DailyBackupReceiver
+import com.example.service.DriveConsentRequiredException
 import com.example.service.DayBoundaryManager
 import com.example.service.HealthConnectService
 import com.example.service.ProgressiveOverloadEngine
@@ -478,13 +479,51 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // Drive consent: the Activity launches this and reports back via onDriveConsentResult()
+    private val _driveConsentRequest = MutableSharedFlow<android.app.PendingIntent>(extraBufferCapacity = 1)
+    val driveConsentRequest: SharedFlow<android.app.PendingIntent> = _driveConsentRequest.asSharedFlow()
+    private var actionAfterDriveConsent: (() -> Unit)? = null
+    private var pendingDriveConsentIntent: android.app.PendingIntent? = null
+
+    /** If [e] means Drive access is still needed, shows an explainer dialog first, then Google's consent screen; retries [retry] once granted. */
+    private fun requestDriveConsentIfNeeded(e: Throwable, retry: () -> Unit): Boolean {
+        if (e !is DriveConsentRequiredException) return false
+        actionAfterDriveConsent = retry
+        pendingDriveConsentIntent = e.pendingIntent
+        _activeModal.value = "DRIVE_CONSENT_INFO"
+        return true
+    }
+
+    fun continueDriveConsent() {
+        _activeModal.value = null
+        pendingDriveConsentIntent?.let { _driveConsentRequest.tryEmit(it) }
+    }
+
+    fun cancelDriveConsent() {
+        _activeModal.value = null
+        onDriveConsentResult(false)
+    }
+
+    fun onDriveConsentResult(granted: Boolean) {
+        val retry = actionAfterDriveConsent
+        actionAfterDriveConsent = null
+        if (granted) retry?.invoke() else _backupTestResult.value = "FAILED: Google Drive access was not granted"
+    }
+
     private fun checkForCloudBackup(email: String) {
-        val cloudPrefs = getApplication<Application>().getSharedPreferences("global_cloud_mock", Context.MODE_PRIVATE)
-        if (cloudPrefs.contains(email)) {
-            Log.d("SyncWellAuth", "Cloud backup found for $email")
-            _activeModal.value = "RESTORE_CONFIRMATION"
-        } else {
-            Log.d("SyncWellAuth", "No cloud backup found for $email")
+        viewModelScope.launch {
+            try {
+                if (CloudBackupService.hasCloudBackup(getApplication(), email)) {
+                    Log.d("SyncWellAuth", "Cloud backup found for $email")
+                    _activeModal.value = "RESTORE_CONFIRMATION"
+                } else {
+                    Log.d("SyncWellAuth", "No cloud backup found for $email")
+                }
+            } catch (e: Exception) {
+                if (!requestDriveConsentIfNeeded(e) { checkForCloudBackup(email) }) {
+                    Log.e("SyncWellAuth", "Cloud backup check failed", e)
+                }
+            }
         }
     }
 
@@ -492,10 +531,9 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val settings = dao.getAppSettingsDirectly()
             val email = settings?.firebaseUid ?: _user.value ?: return@launch
-            
+
             _isCloudBackupSyncInProgress.value = true
             try {
-                delay(1500) // Simulate network latency
                 val result = CloudBackupService.performRestore(getApplication(), dao, email)
                 result.fold(
                     onSuccess = {
@@ -503,8 +541,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                         _backupTestResult.value = "SUCCESS"
                     },
                     onFailure = { e ->
-                        Log.e("SyncWellAuth", "Restore failed", e)
-                        _backupTestResult.value = "FAILED: ${e.message}"
+                        if (!requestDriveConsentIfNeeded(e) { restoreDataFromCloud() }) {
+                            Log.e("SyncWellAuth", "Restore failed", e)
+                            _backupTestResult.value = "FAILED: ${e.message}"
+                        }
                     }
                 )
             } catch (e: Exception) {
@@ -512,7 +552,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 _backupTestResult.value = "FAILED: ${e.message}"
             } finally {
                 _isCloudBackupSyncInProgress.value = false
-                _activeModal.value = null
+                if (_activeModal.value == "RESTORE_CONFIRMATION") _activeModal.value = null
             }
         }
     }
@@ -1256,8 +1296,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                     return@launch
                 }
 
-                delay(1500) // Simulate cloud sync latency
-                
                 val result = CloudBackupService.performBackup(getApplication(), dao, userEmail)
                 result.fold(
                     onSuccess = { summary ->
@@ -1266,8 +1304,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                         Log.d("SyncWellAuth", "Backup successful for $userEmail: ${summary.workoutSessionsCount} workouts, ${summary.todosCount} todos")
                     },
                     onFailure = { e ->
-                        Log.e("SyncWellAuth", "Backup failed", e)
-                        _backupTestResult.value = "FAILED: ${e.message}"
+                        if (!requestDriveConsentIfNeeded(e) { triggerTestBackup() }) {
+                            Log.e("SyncWellAuth", "Backup failed", e)
+                            _backupTestResult.value = "FAILED: ${e.message}"
+                        }
                     }
                 )
             } catch (e: Exception) {

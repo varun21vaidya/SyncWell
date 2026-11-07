@@ -35,6 +35,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.ui.AnalyticsScreen
 import com.example.ui.HomeScreen
@@ -63,9 +66,24 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: SyncWellViewModel by viewModels()
 
+    private val driveConsentLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        viewModel.onDriveConsentResult(result.resultCode == RESULT_OK)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.driveConsentRequest.collect { pendingIntent ->
+                    driveConsentLauncher.launch(
+                        androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                    )
+                }
+            }
+        }
         setContent {
             val theme by viewModel.theme.collectAsState()
             val appLaunchState by viewModel.appLaunchState.collectAsState()
@@ -89,6 +107,26 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                    }
+
+                    if (activeModal == "DRIVE_CONSENT_INFO") {
+                        AlertDialog(
+                            onDismissRequest = { viewModel.cancelDriveConsent() },
+                            title = { Text("Back up to Google Drive", fontWeight = FontWeight.Black) },
+                            text = { Text("Your backup is stored privately in your own Google Drive. SyncWell can't see your other files.") },
+                            confirmButton = {
+                                TextButton(onClick = { viewModel.continueDriveConsent() }) {
+                                    Text("CONTINUE", color = Emerald600, fontWeight = FontWeight.Black)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { viewModel.cancelDriveConsent() }) {
+                                    Text("CANCEL", color = Slate400)
+                                }
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                        )
                     }
 
                     // Global Restore Modal

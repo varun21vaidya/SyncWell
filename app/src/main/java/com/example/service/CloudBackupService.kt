@@ -31,8 +31,10 @@ data class BackupSummary(
 
 object CloudBackupService {
     private const val TAG = "CloudBackupService"
-    private const val PREFS_CLOUD_MOCK = "global_cloud_mock"
     private const val PREFS_SESSION = "syncwell_session_prefs"
+
+    suspend fun hasCloudBackup(context: Context, userEmail: String): Boolean =
+        DriveBackupClient.hasBackup(DriveBackupClient.accessToken(context, userEmail))
 
     suspend fun performBackup(context: Context, dao: SyncWellDao, userEmail: String): Result<BackupSummary> {
         return try {
@@ -290,9 +292,9 @@ object CloudBackupService {
             }
             root.put("vacationDays", vdArr)
 
-            // Save to Mock Cloud SharedPreferences
-            val cloudPrefs = context.getSharedPreferences(PREFS_CLOUD_MOCK, Context.MODE_PRIVATE)
-            cloudPrefs.edit().putString(userEmail, root.toString()).apply()
+            // Upload to the user's Google Drive (hidden app data folder)
+            val token = DriveBackupClient.accessToken(context, userEmail)
+            DriveBackupClient.upload(token, root.toString())
 
             // Update local session timestamp
             val sessionPrefs = context.getSharedPreferences(PREFS_SESSION, Context.MODE_PRIVATE)
@@ -327,8 +329,8 @@ object CloudBackupService {
 
     suspend fun performRestore(context: Context, dao: SyncWellDao, userEmail: String): Result<String> {
         return try {
-            val cloudPrefs = context.getSharedPreferences(PREFS_CLOUD_MOCK, Context.MODE_PRIVATE)
-            val jsonString = cloudPrefs.getString(userEmail, null)
+            val token = DriveBackupClient.accessToken(context, userEmail)
+            val jsonString = DriveBackupClient.download(token)
                 ?: return Result.failure(IllegalStateException("No cloud backup found for $userEmail"))
 
             val root = JSONObject(jsonString)
