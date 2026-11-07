@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -71,6 +72,8 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
     var showCircadianWarning by remember { mutableStateOf(false) }
     var selectedSuppName by remember { mutableStateOf("") }
     var showManage by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+    if (showHelp) RoutineHelpDialog { showHelp = false }
 
     val proteinConfirmationTask by viewModel.proteinConfirmationTask.collectAsState()
 
@@ -146,7 +149,11 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                 }
             }
 
-            TextButton(onClick = { showManage = true }) { Text("MANAGE ROUTINES", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showManage = true }) { Text("MANAGE ROUTINES", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { showHelp = true }) { Icon(Icons.Default.Info, contentDescription = "How routines work", tint = Slate400) }
+            }
 
             // Vacation Mode Alert status
             if (isVacationActive) {
