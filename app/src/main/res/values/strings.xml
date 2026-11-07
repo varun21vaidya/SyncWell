@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">SyncWell</string>
-    <!-- REPLACE THIS WITH YOUR REAL WEB CLIENT ID FROM GOOGLE CLOUD CONSOLE -->
     <string name="google_web_client_id">209853782192-a7p4u3tredij4iq0cgo5jeqmu6abje39.apps.googleusercontent.com</string>
 </resources>

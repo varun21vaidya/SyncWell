@@ -11,7 +11,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.example"
+    applicationId = "com.syncwell.app"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -20,22 +20,27 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  // Real upload key only when KEYSTORE_PATH is set; otherwise release falls back to the debug key
+  // (local R8 testing only: Play will reject that build).
+  val hasUploadKey = System.getenv("KEYSTORE_PATH") != null
   signingConfigs {
-    create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+    if (hasUploadKey) {
+      create("release") {
+        storeFile = file(System.getenv("KEYSTORE_PATH"))
+        storePassword = System.getenv("STORE_PASSWORD")
+        keyAlias = "upload"
+        keyPassword = System.getenv("KEY_PASSWORD")
+      }
     }
   }
 
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      signingConfig = signingConfigs.getByName(if (hasUploadKey) "release" else "debug")
     }
     debug {
       // Use default debug signing config
@@ -51,6 +56,8 @@ android {
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
+
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
