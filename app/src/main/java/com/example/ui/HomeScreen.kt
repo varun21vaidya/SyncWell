@@ -37,6 +37,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val todayStepsLog by viewModel.todayStepsLog.collectAsState()
     val weightLogs by viewModel.weightLogs.collectAsState(initial = emptyList())
     val targetWeightKg by viewModel.targetWeightKg.collectAsState()
+    val waterGoalMl by viewModel.waterGoalMl.collectAsState()
     val latestWeight = weightLogs.firstOrNull()?.weightKg
 
     var showManualStepsDialog by remember { mutableStateOf(false) }
@@ -51,7 +52,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val totalCount = if (activeRoutineItems.isNotEmpty()) activeRoutineItems.size else 1
     val completionRatio = completedCount.toFloat() / totalCount
 
-    val isSunday = DayBoundaryManager.isSunday()
 
     Column(
         modifier = Modifier
@@ -106,41 +106,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black
                 )
-            }
-        }
-
-        // Sunday Calibration warning Alert (Uses core DateRange icon)
-        if (isSunday) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Emerald600),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = "Calendar Icon",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Weekly Focus Calibration Due",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "Sunday at 21:00 requires allocation for the upcoming 55h 20m framework blocks.",
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
             }
         }
 
@@ -212,7 +177,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
         ) {
             // Hydration Card
             Card(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .defaultMinSize(minHeight = 155.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.dp, OledBorder)
@@ -228,14 +195,17 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 0.5.sp,
+                            maxLines = 1
                         )
                         if (totalWaterMl > 0) {
                             Text(
-                                text = "Undo Last",
+                                text = "Undo",
                                 color = RoseAccent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier
                                     .clickable { viewModel.reduceWaterLog() }
                                     .testTag("undo_hydration_button")
@@ -257,7 +227,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                             modifier = Modifier.testTag("water_total_text")
                         )
                         Text(
-                            text = "/ 4.0 L",
+                            text = String.format(Locale.getDefault(), "/ %.1f L", waterGoalMl / 1000f),
                             color = Slate400,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
@@ -304,6 +274,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
             Card(
                 modifier = Modifier
                     .weight(1f)
+                    .defaultMinSize(minHeight = 155.dp)
                     .clickable { onNavigateToTab(3) }, // Navigates to Focus Tab
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(20.dp),
@@ -315,7 +286,8 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                         color = Slate400,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        letterSpacing = 0.5.sp,
+                        maxLines = 1
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -374,7 +346,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "STEPS COUNT",
                         color = Slate400,
@@ -384,13 +356,16 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
                             text = "$totalSteps Steps",
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         IconButton(
                             onClick = {
@@ -411,6 +386,8 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     }
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Button(
                     onClick = { viewModel.syncStepsWithHealthConnect() },
                     colors = ButtonDefaults.buttonColors(
@@ -419,19 +396,26 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     ),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, OledBorder),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("health_sync_button")
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Sync steps Icon",
                             tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
-                        Text("Health Sync", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Health Sync",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }

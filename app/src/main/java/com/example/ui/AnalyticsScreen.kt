@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +21,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DailyAnalytics
@@ -202,6 +204,9 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                                 color = EmeraldGlow,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -244,6 +249,9 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                                 color = PurpleAccent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -290,6 +298,9 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                                 color = GoldAccent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -326,7 +337,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         val weightDelta = latestWeight?.let { it - targetWeightKg }
                         val (deltaBg, deltaFg, deltaText) = when {
                             weightDelta == null -> Triple(SurfaceTier2, Slate400, "Goal: ${String.format(Locale.US, "%.1f", targetWeightKg)} kg")
-                            Math.abs(weightDelta) < 0.1 -> Triple(EmeraldDim, EmeraldGlow, "🎯 On Target (${String.format(Locale.US, "%.1f", targetWeightKg)} kg)")
+                            Math.abs(weightDelta) < 0.1 -> Triple(EmeraldDim, EmeraldGlow, "🎯 On Target")
                             weightDelta > 0 -> Triple(AmberDim, GoldAccent, "+${String.format(Locale.US, "%.1f", weightDelta)} kg to goal")
                             else -> Triple(CyanDim, CyanLaser, "${String.format(Locale.US, "%.1f", weightDelta)} kg to goal")
                         }
@@ -340,6 +351,9 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                                 color = deltaFg,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -592,34 +606,39 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "FOCUS TIME & ALLOCATION",
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 1.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = if (selectedPeriod == "DAILY") "Recent Daily Breakdown" else "$selectedPeriod Trends",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                    Spacer(modifier = Modifier.width(6.dp))
                     // Legend
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(2.dp)).background(PurpleAccent))
-                            Text("Study", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("Study", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(2.dp)).background(CyanLaser))
-                            Text("Work", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("Work", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(2.dp)).background(RoseCrimson))
-                            Text("Timepass", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text("Timepass", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -668,21 +687,26 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "PHYSICAL ACTIVITY & STEPS",
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 1.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Step Count Progression",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = AmberDim,
                         shape = RoundedCornerShape(8.dp)
@@ -692,6 +716,8 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             color = GoldAccent,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -710,20 +736,37 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Benchmark: 8,000 steps baseline",
-                        color = GoldAccent,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Stretch: 10,000 steps",
-                        color = EmeraldGlow,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(GoldAccent))
+                        Text(
+                            text = "Target: 8k baseline",
+                            color = GoldAccent,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(EmeraldGlow))
+                        Text(
+                            text = "Stretch: 10k goal",
+                            color = EmeraldGlow,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
         }
@@ -792,21 +835,26 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "WEIGHT HISTORY ($selectedPeriod TRENDS)",
                                 color = Slate400,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                letterSpacing = 1.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = "Body Composition Timeline",
                                 color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Black
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             color = CyanDim,
                             shape = RoundedCornerShape(8.dp)
@@ -816,6 +864,8 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                                 color = CyanLaser,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -910,6 +960,8 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(28.dp))
     }
 }
 
@@ -996,9 +1048,11 @@ fun MultiCategoryFocusRow(
     maxMins: Float
 ) {
     val totalProductive = studyMins + workMins
-    val studyFraction = (studyMins / maxMins).coerceIn(0f, 1f)
-    val workFraction = (workMins / maxMins).coerceIn(0f, 1f)
-    val timepassFraction = (timepassMins / maxMins).coerceIn(0f, 1f)
+    val totalRaw = (studyMins + workMins + timepassMins).toFloat()
+    val scale = if (totalRaw > maxMins) totalRaw else maxMins
+    val studyFraction = (studyMins / scale).coerceIn(0f, 1f)
+    val workFraction = (workMins / scale).coerceIn(0f, 1f)
+    val timepassFraction = (timepassMins / scale).coerceIn(0f, 1f)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1010,7 +1064,9 @@ fun MultiCategoryFocusRow(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(52.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         // Stacked Progress Bar
@@ -1086,7 +1142,9 @@ fun StepActivityBarRow(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(52.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         Box(
@@ -1134,7 +1192,9 @@ fun RoutineAdherenceRow(
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(52.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         Box(
@@ -1177,7 +1237,9 @@ fun ActualWaterMeter(label: String, waterMl: Int, maxValue: Float) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(52.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         Box(
