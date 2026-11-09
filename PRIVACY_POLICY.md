@@ -1,9 +1,7 @@
 # Privacy Policy for SyncWell
 
-**Effective Date:** [DATE]
-**Contact:** [YOUR CONTACT EMAIL]
-
-> Draft for the Android app `com.syncwell.app`. Fill the placeholders, check it against your final feature set, and host it at a public URL before submitting to Google Play.
+**Effective Date:** November 9, 2026
+**Contact:** varunvaidyadev@gmail.com
 
 ## What SyncWell is
 SyncWell is an Android app for tracking daily routines, workouts, focus sessions, tasks, water, supplements, steps and body weight.

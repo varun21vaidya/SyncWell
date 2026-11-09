@@ -1,9 +1,7 @@
 # Terms of Service for SyncWell
 
-**Effective Date:** [DATE]
-**Contact:** [YOUR CONTACT EMAIL]
-
-> Draft for the Android app `com.syncwell.app`. Have it reviewed and fill the placeholders before publishing.
+**Effective Date:** November 9, 2026
+**Contact:** varunvaidyadev@gmail.com
 
 1. **Acceptance.** By installing or using SyncWell you agree to these terms.
 2. **Use of the app.** SyncWell is a personal tracking tool provided free of charge. Use it lawfully and at your own discretion.
@@ -13,4 +11,4 @@
 6. **No warranty.** The app is provided "as is" without warranties of any kind. We do not guarantee it will be error-free or always available.
 7. **Limitation of liability.** To the extent permitted by law, we are not liable for any loss of data or any indirect or consequential damages arising from your use of the app.
 8. **Changes.** We may update the app and these terms. Continued use after an update means you accept the changes.
-9. **Contact.** Questions: [YOUR CONTACT EMAIL].
+9. **Contact.** Questions: varunvaidyadev@gmail.com.
