@@ -72,9 +72,17 @@ class MainActivity : ComponentActivity() {
         viewModel.onDriveConsentResult(result.resultCode == RESULT_OK)
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Android 13+ hides the focus-timer notification until this is granted.
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.driveConsentRequest.collect { pendingIntent ->

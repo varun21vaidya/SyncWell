@@ -25,4 +25,4 @@ Set `KEYSTORE_PATH`, `STORE_PASSWORD` and `KEY_PASSWORD` (key alias `upload`) be
 
 ## Policies
 
-`PRIVACY_POLICY.md` and `TERMS_OF_SERVICE.md` are drafts. Fill the placeholders and host them at a public URL for Play.
+`PRIVACY_POLICY.md` and `TERMS_OF_SERVICE.md` are published at https://varun21vaidya.github.io/syncwell-legal/ (source repo: `syncwell-legal`). Keep both copies in sync when editing.
