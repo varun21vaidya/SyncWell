@@ -37,6 +37,7 @@ object DriveBackupClient {
     private const val UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
+    private const val MAX_RESPONSE_BYTES = 50L * 1024 * 1024
     private val http = OkHttpClient()
 
     suspend fun accessToken(context: Context, email: String?): String {
@@ -108,6 +109,8 @@ object DriveBackupClient {
 
     private fun <T> execute(request: Request, parse: (String) -> T): T {
         http.newCall(request).execute().use { response ->
+            // Cap what we load into memory; a real backup is a few MB at most.
+            if (response.body.contentLength() > MAX_RESPONSE_BYTES) throw IOException("Response too large")
             val body = response.body.string()
             if (!response.isSuccessful) {
                 val reason = runCatching { JSONObject(body).getJSONObject("error").getString("message") }

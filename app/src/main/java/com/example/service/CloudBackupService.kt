@@ -2,6 +2,7 @@ package com.example.service
 
 import android.content.Context
 import android.util.Log
+import androidx.room.withTransaction
 import com.example.data.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -410,7 +411,8 @@ object CloudBackupService {
             val token = DriveBackupClient.accessToken(context, userEmail)
             val jsonString = DriveBackupClient.download(token)
                 ?: return Result.failure(IllegalStateException("No cloud backup found for $userEmail"))
-            restoreFromJson(dao, jsonString)
+            // One transaction: a malformed or truncated backup must not leave the database half-restored.
+            AppDatabase.getDatabase(context).withTransaction { restoreFromJson(dao, jsonString) }
             Log.d(TAG, "Restore successful")
             Result.success("RESTORE_SUCCESS")
         } catch (e: Exception) {
