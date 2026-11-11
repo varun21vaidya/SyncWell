@@ -350,7 +350,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                 )
 
                 Text(
-                    text = "Sync consolidated End-of-Day JSON compilation payloads safely under Firestore append-only directories.",
+                    text = "Sync consolidated End-of-Day JSON compilation payloads safely to your private Google Drive app folder.",
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                     fontSize = 12.sp,
                     lineHeight = 16.sp
@@ -450,7 +450,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "FIREBASE AUTH CONTROL",
+                    text = "GOOGLE ACCOUNT",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -479,7 +479,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                     }
                 } else {
                     Text(
-                        text = "Authorize Google Sign-In secure authentication inside Firebase backends to enable continuous backup pathways.",
+                        text = "Sign in with Google to back up your data to your private Google Drive app folder.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                         fontSize = 12.sp,
                         lineHeight = 16.sp
