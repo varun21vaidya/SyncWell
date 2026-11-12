@@ -4,11 +4,13 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.SetupAnswers
@@ -22,6 +24,8 @@ data class SetupResult(
     val currentWeightKg: Double?,
     val goalWeightKg: Double?
 )
+
+private fun weightOk(v: String) = v.isBlank() || v.toDoubleOrNull()?.let { it in 20.0..500.0 } == true
 
 private val TIME = Regex("([01]\\d|2[0-3]):[0-5]\\d")
 private val DAYS = listOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 0 to "Sun")
@@ -50,8 +54,8 @@ fun SetupQuestionsForm(
 
     val customTimeOk = customTime.isBlank() || TIME.matches(customTime)
     val valid = TIME.matches(wake) && TIME.matches(sleep) &&
-        (water.toDoubleOrNull() ?: 0.0) > 0 &&
-        (current.isBlank() || current.toDoubleOrNull() != null) && (goal.isBlank() || goal.toDoubleOrNull() != null)
+        (water.toDoubleOrNull() ?: 0.0) in 0.1..10.0 &&
+        weightOk(current) && weightOk(goal)
 
     Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -71,11 +75,11 @@ fun SetupQuestionsForm(
             }
         }
 
-        OutlinedTextField(water, { water = it }, Modifier.fillMaxWidth(), label = { Text("Daily water goal (litres)") }, singleLine = true)
+        OutlinedTextField(water, { water = it }, Modifier.fillMaxWidth(), label = { Text("Daily water goal (litres, 0.1-10)") }, singleLine = true, isError = (water.toDoubleOrNull() ?: 0.0) !in 0.1..10.0, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         if (askCurrentWeight) {
-            OutlinedTextField(current, { current = it }, Modifier.fillMaxWidth(), label = { Text("Current weight kg (optional)") }, singleLine = true)
+            OutlinedTextField(current, { current = it }, Modifier.fillMaxWidth(), label = { Text("Current weight kg (optional)") }, singleLine = true, isError = !weightOk(current), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         }
-        OutlinedTextField(goal, { goal = it }, Modifier.fillMaxWidth(), label = { Text("Goal weight kg (optional)") }, singleLine = true)
+        OutlinedTextField(goal, { goal = it }, Modifier.fillMaxWidth(), label = { Text("Goal weight kg (optional)") }, singleLine = true, isError = !weightOk(goal), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
 
         Text("Vitamins you take", color = Slate400, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

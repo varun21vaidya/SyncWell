@@ -342,7 +342,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "CLOUDS BACKUP SNAPSHOTS",
+                    text = "CLOUD BACKUP SNAPSHOTS",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,

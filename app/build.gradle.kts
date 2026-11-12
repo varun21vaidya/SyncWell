@@ -12,7 +12,7 @@ android {
     applicationId = "com.syncwell.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 4
+    versionCode = 5
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -37,6 +37,7 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = true
       isShrinkResources = true
+      ndk { debugSymbolLevel = "SYMBOL_TABLE" }
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName(if (hasUploadKey) "release" else "debug")
     }
