@@ -78,4 +78,15 @@ class MigrationTest {
         }
         db.query("SELECT kind FROM vacation_days").use { it.moveToFirst(); assertEquals("VACATION", it.getString(0)) }
     }
+
+    @Test fun migrate11To12AddsCardioTableAndKeepsSessions() {
+        helper.createDatabase(dbName, 11).apply {
+            execSQL("INSERT INTO workout_sessions (id, date, dayType, environment, startedAt, endedAt, isDeleted, activeSeconds) VALUES ('w1', '2026-11-07', 'PUSH', 'GYM', 'x', 'y', 0, 1800)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 12, true, AppDatabase.MIGRATION_11_12)
+        db.execSQL("INSERT INTO cardio_entries (id, sessionId, type, minutes, distanceKm, inclinePct, effort) VALUES ('c1', 'w1', 'TREADMILL', 15, NULL, 6.0, 'HARD')")
+        db.query("SELECT COUNT(*) FROM cardio_entries").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+        db.query("SELECT activeSeconds FROM workout_sessions WHERE id = 'w1'").use { it.moveToFirst(); assertEquals(1800, it.getInt(0)) }
+    }
 }

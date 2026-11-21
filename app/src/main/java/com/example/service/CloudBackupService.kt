@@ -62,6 +62,16 @@ object CloudBackupService {
         }
         root.put("todos", todosArr)
 
+        // Cardio finisher entries
+        val cardioArr = JSONArray()
+        dao.getAllCardioEntries().forEach { c ->
+            cardioArr.put(JSONObject().apply {
+                put("id", c.id); put("sessionId", c.sessionId); put("type", c.type); put("minutes", c.minutes)
+                putOpt("distanceKm", c.distanceKm); putOpt("inclinePct", c.inclinePct); put("effort", c.effort)
+            })
+        }
+        root.put("cardioEntries", cardioArr)
+
         // Goal completion history
         val completionsArr = JSONArray()
         dao.getAllGoalCompletions().forEach { c ->
@@ -545,6 +555,17 @@ object CloudBackupService {
                 ))
             }
             if (list.isNotEmpty()) dao.insertTodos(list)
+        }
+        root.optJSONArray("cardioEntries")?.let { arr -> // absent in older backups
+            val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->
+                CardioEntry(
+                    o.getString("id"), o.getString("sessionId"), o.getString("type"), o.getInt("minutes"),
+                    if (o.has("distanceKm") && !o.isNull("distanceKm")) o.getDouble("distanceKm") else null,
+                    if (o.has("inclinePct") && !o.isNull("inclinePct")) o.getDouble("inclinePct") else null,
+                    o.optString("effort", "STEADY")
+                )
+            }
+            if (list.isNotEmpty()) dao.insertCardioEntries(list)
         }
         root.optJSONArray("goalCompletions")?.let { arr -> // absent in older backups
             val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->

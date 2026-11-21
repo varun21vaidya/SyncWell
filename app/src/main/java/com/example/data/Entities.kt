@@ -333,6 +333,18 @@ data class DayCount(val dateKey: String, val done: Int, val total: Int)
 data class HabitDayRow(val dateKey: String, val templateItemId: String, val done: Boolean)
 data class CategoryDayCount(val dateKey: String, val category: String, val done: Int, val total: Int)
 
+/** Optional cardio finisher of a workout session (several per session are allowed). */
+@Entity(tableName = "cardio_entries", indices = [Index(value = ["sessionId"])])
+data class CardioEntry(
+    @PrimaryKey val id: String,
+    val sessionId: String,
+    val type: String, // TREADMILL, CYCLING, ROWING, STAIRS, RUN, WALK
+    val minutes: Int,
+    val distanceKm: Double? = null,
+    val inclinePct: Double? = null,
+    val effort: String = "STEADY" // EASY, STEADY, HARD
+)
+
 /** One row each time a goal was completed (kept after the goal resets). One per goal per day. */
 @Entity(
     tableName = "goal_completions",

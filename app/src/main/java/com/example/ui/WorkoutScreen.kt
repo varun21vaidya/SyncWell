@@ -52,6 +52,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
     val rest by viewModel.rest.collectAsState()
     val exerciseHistory by viewModel.exerciseHistory.collectAsState()
     val summary by viewModel.workoutSummary.collectAsState()
+    val cardioDraft by viewModel.cardioDraft.collectAsState()
 
     var viewingSession by remember { mutableStateOf(true) }
     var showHistory by remember { mutableStateOf(false) }
@@ -130,6 +131,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                 onSetValues = { seId, logId, reps, kg -> viewModel.setSetValues(seId, logId, reps, kg) },
                 onAddSet = { viewModel.addSetToSessionExercise(it) }, onDeleteSet = { seId, logId -> viewModel.deleteSetLogFromSessionExercise(seId, logId) },
                 onRemoveExercise = { removing = it }, onNotes = { notesFor = it }, onAddExercise = { showAdd = true },
+                cardio = cardioDraft, onCardioChange = { viewModel.setCardioDraft(it) },
                 modifier = Modifier.weight(1f)
             )
             else -> {

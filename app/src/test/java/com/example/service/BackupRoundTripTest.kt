@@ -129,4 +129,22 @@ class BackupRoundTripTest {
         assertEquals("VACATION", dao.getAllVacationDays().single().kind)
         assertEquals(null, dao.getAllDailyRoutineItems().single().templateItemId)
     }
+
+    @Test fun cardioEntriesRoundTripAndOlderBackupsHaveNone() = runBlocking {
+        dao.insertCardioEntries(listOf(
+            CardioEntry("c1", "w1", "TREADMILL", 20, null, 5.0, "HARD"),
+            CardioEntry("c2", "w1", "CYCLING", 30, 12.5, null, "EASY")
+        ))
+        val (json, _) = CloudBackupService.buildBackup(dao)
+        db.clearAllTables()
+        CloudBackupService.restoreFromJson(dao, json)
+        val back = dao.getAllCardioEntries().associateBy { it.id }
+        assertEquals(5.0, back.getValue("c1").inclinePct!!, 0.0)
+        assertEquals(null, back.getValue("c1").distanceKm)
+        assertEquals(12.5, back.getValue("c2").distanceKm!!, 0.0)
+
+        db.clearAllTables()
+        CloudBackupService.restoreFromJson(dao, """{"todos":[]}""")
+        assertTrue(dao.getAllCardioEntries().isEmpty())
+    }
 }

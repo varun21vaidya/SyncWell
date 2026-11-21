@@ -2,6 +2,7 @@ package com.example.viewmodel
 
 import androidx.room.withTransaction
 import com.example.data.AppDatabase
+import com.example.data.CardioEntry
 import com.example.data.ExerciseProgressionState
 import com.example.data.SyncWellDao
 import com.example.data.WorkoutSession
@@ -11,6 +12,7 @@ import com.example.domain.NextTargetRule
 import com.example.domain.PersonalBestRule
 import com.example.domain.SetRef
 import com.example.domain.WeeklyGymStreak
+import java.util.UUID
 
 /**
  * Saves a finished workout in one transaction (a kill halfway must not leave an ended session with only some
@@ -34,6 +36,7 @@ class FinishWorkoutUseCase(private val db: AppDatabase, private val dao: SyncWel
         var setCount = 0
         db.withTransaction {
             dao.insertWorkoutSession(session.copy(endedAt = endedIso, activeSeconds = activeSeconds))
+            cardio?.let { dao.insertCardioEntry(CardioEntry(UUID.randomUUID().toString(), session.id, it.type, it.minutes, it.distanceKm, it.inclinePct, it.effort)) }
             exercises.forEach { se ->
                 val completed = (logs[se.id] ?: emptyList()).filter { it.isCompleted }
                 if (completed.isEmpty()) return@forEach

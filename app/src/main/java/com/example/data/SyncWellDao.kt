@@ -344,6 +344,19 @@ interface SyncWellDao {
     suspend fun updateTodo(todo: Todo)
 
     // FEATURE 11: Auto-reset completed goals
+    // Cardio finisher entries; the flow only returns those of finished, kept sessions
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCardioEntry(entry: CardioEntry)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCardioEntries(entries: List<CardioEntry>)
+
+    @Query("SELECT * FROM cardio_entries")
+    suspend fun getAllCardioEntries(): List<CardioEntry>
+
+    @Query("SELECT c.* FROM cardio_entries c JOIN workout_sessions s ON c.sessionId = s.id WHERE s.isDeleted = 0 AND s.endedAt IS NOT NULL")
+    fun getCardioEntriesFlow(): Flow<List<CardioEntry>>
+
     // Goal history: one row per goal per day, ignored when it already exists
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertGoalCompletion(row: GoalCompletion)

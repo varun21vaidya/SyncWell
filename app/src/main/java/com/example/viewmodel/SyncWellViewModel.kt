@@ -122,14 +122,16 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val finishedSetRows: StateFlow<List<FinishedSetRow>> = dao.getFinishedSetRowsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val workoutHistory: StateFlow<List<WorkoutHistoryItem>> = combine(dao.getFinishedSessionsFlow(), finishedSetRows) { sessions, rows ->
+    val workoutHistory: StateFlow<List<WorkoutHistoryItem>> = combine(dao.getFinishedSessionsFlow(), finishedSetRows, dao.getCardioEntriesFlow()) { sessions, rows, cardio ->
+        val cardioBySession = cardio.groupBy { it.sessionId }
         val newBests = PersonalBestRule.newBestsBySession(rows.map { HistoricSet(it.sessionId, it.date + "|" + it.startedAt, it.exerciseId, it.weightKg, it.reps) })
         val bySession = rows.groupBy { it.sessionId }
         sessions.map { s ->
             val r = bySession[s.id].orEmpty()
             WorkoutHistoryItem(
                 session = s, sets = r.size, exercises = r.map { it.exerciseId }.toSet().size, newBests = newBests[s.id] ?: 0,
-                activeSeconds = s.activeSeconds.takeIf { it > 0 } ?: fallbackSeconds(s.startedAt, s.endedAt)
+                activeSeconds = s.activeSeconds.takeIf { it > 0 } ?: fallbackSeconds(s.startedAt, s.endedAt),
+                cardio = cardioBySession[s.id].orEmpty().map { CardioLine(it.type, it.minutes, it.distanceKm, it.inclinePct, it.effort) }
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -149,6 +151,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             lastDone = NextSplitRule.lastDone(history.map { it.session.dayType to it.session.date }),
             weekDates = weekDates, weekDone = weekDone,
             thisWeekCount = history.count { it.session.date in weekDates },
+            cardioMinutesThisWeek = history.filter { it.session.date in weekDates }.sumOf { h -> h.cardio.sumOf { it.minutes } },
             weeklyTarget = settings?.weeklyGymTarget ?: 3, today = today, recent = history.take(5)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WorkoutStartState())
@@ -163,6 +166,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     private val _exerciseHistory = MutableStateFlow<Map<String, ExerciseHistory>>(emptyMap())
     val exerciseHistory: StateFlow<Map<String, ExerciseHistory>> = _exerciseHistory.asStateFlow()
+
+    // Optional cardio finisher being filled in during the session
+    private val _cardioDraft = MutableStateFlow<CardioLine?>(null)
+    val cardioDraft: StateFlow<CardioLine?> = _cardioDraft.asStateFlow()
+    fun setCardioDraft(c: CardioLine?) { _cardioDraft.value = c }
 
     private val _workoutSummary = MutableStateFlow<WorkoutSummary?>(null)
     val workoutSummary: StateFlow<WorkoutSummary?> = _workoutSummary.asStateFlow()
@@ -1308,6 +1316,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun clearActiveSessionFromPrefs() {
+        _cardioDraft.value = null
         prefs.edit()
             .remove("active_session_id")
             .remove("active_session_day_type")
@@ -1480,7 +1489,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 val summary = FinishWorkoutUseCase(db, dao)(
-                    session, exercises, logs, seconds, endedIso, names, DayBoundaryManager.currentTargetDate.value, cardio = null
+                    session, exercises, logs, seconds, endedIso, names, DayBoundaryManager.currentTargetDate.value, cardio = _cardioDraft.value
                 )
                 _currentActiveSession.value = null
                 _activeSessionExercises.value = emptyList()

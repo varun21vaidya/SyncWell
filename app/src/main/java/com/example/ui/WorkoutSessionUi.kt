@@ -38,6 +38,7 @@ import com.example.domain.PersonalBestRule
 import com.example.domain.SessionClock
 import com.example.domain.SetRef
 import com.example.ui.theme.*
+import com.example.viewmodel.CardioLine
 import com.example.viewmodel.ExerciseHistory
 import com.example.viewmodel.RestState
 import com.example.viewmodel.WorkoutSummary
@@ -72,6 +73,8 @@ fun ActiveSessionContent(
     onRemoveExercise: (WorkoutSessionExercise) -> Unit,
     onNotes: (WorkoutSessionExercise) -> Unit,
     onAddExercise: () -> Unit,
+    cardio: CardioLine? = null,
+    onCardioChange: (CardioLine?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -154,6 +157,8 @@ fun ActiveSessionContent(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldGlow), border = BorderStroke(1.dp, EmeraldGlow),
                     modifier = Modifier.fillMaxWidth().height(52.dp).testTag("add_exercise_button")
                 ) { Text("Add exercise", fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.height(8.dp))
+                CardioCard(cardio, onCardioChange)
                 Spacer(Modifier.height(12.dp))
             }
         }

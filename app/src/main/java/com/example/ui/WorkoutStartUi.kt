@@ -145,6 +145,7 @@ fun WorkoutStartContent(
                     Column {
                         SectionLabel("THIS WEEK")
                         Text("${start.thisWeekCount} of ${start.weeklyTarget} workouts", fontSize = 18.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
+                        if (start.cardioMinutesThisWeek > 0) Text("${start.cardioMinutesThisWeek} min cardio this week", fontSize = 12.sp, color = Slate400)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
