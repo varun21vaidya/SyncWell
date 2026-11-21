@@ -169,7 +169,7 @@ fun UpNextCard(item: DayItem?, onDone: (DayItem) -> Unit) {
 }
 
 @Composable
-fun GoalsStrip(goals: List<Todo>, onOpen: () -> Unit) {
+fun GoalsStrip(goals: List<Todo>, weekCounts: Map<String, Int>, onOpen: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onOpen() }.testTag("goals_strip"),
         colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
@@ -188,7 +188,8 @@ fun GoalsStrip(goals: List<Todo>, onOpen: () -> Unit) {
                 goals.take(3).forEach { g ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.CheckCircle, null, tint = if (g.isCompleted) EmeraldGlow else SurfaceTier3, modifier = Modifier.size(18.dp))
-                        Text(g.title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        val progress = g.weeklyTarget?.let { " · ${weekCounts[g.id] ?: 0}/$it this week" } ?: ""
+                        Text(g.title + progress, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 if (goals.size > 3) Text("+${goals.size - 3} more", color = Slate400, fontSize = 12.sp)

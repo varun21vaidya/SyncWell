@@ -28,6 +28,7 @@ import com.example.viewmodel.SyncWellViewModel
 fun TodosScreen(viewModel: SyncWellViewModel) {
     val shortTermGoals by viewModel.shortTermGoals.collectAsState()
     val longTermGoals by viewModel.longTermGoals.collectAsState()
+    val weekCounts by viewModel.goalWeekCounts.collectAsState()
 
     var shortTermInput by remember { mutableStateOf("") }
     var longTermInput by remember { mutableStateOf("") }
@@ -79,7 +80,9 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
                         todo = todo,
                         onToggle = { viewModel.toggleTodo(todo) },
                         onDelete = { viewModel.deleteTodo(todo) },
-                        onEdit = { newTitle -> viewModel.updateTodoTitle(todo, newTitle) }
+                        onEdit = { newTitle -> viewModel.updateTodoTitle(todo, newTitle) },
+                        weekCount = weekCounts[todo.id] ?: 0,
+                        onSetTarget = { viewModel.setGoalWeeklyTarget(todo, it) }
                     )
                 }
             }
@@ -120,7 +123,9 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
                         todo = todo,
                         onToggle = { viewModel.toggleTodo(todo) },
                         onDelete = { viewModel.deleteTodo(todo) },
-                        onEdit = { newTitle -> viewModel.updateTodoTitle(todo, newTitle) }
+                        onEdit = { newTitle -> viewModel.updateTodoTitle(todo, newTitle) },
+                        weekCount = weekCounts[todo.id] ?: 0,
+                        onSetTarget = { viewModel.setGoalWeeklyTarget(todo, it) }
                     )
                 }
             }
@@ -203,7 +208,12 @@ fun EmptyGoalPlaceholder(text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GoalItemRow(todo: Todo, onToggle: () -> Unit, onDelete: () -> Unit, onEdit: (String) -> Unit) {
+fun GoalItemRow(
+    todo: Todo, onToggle: () -> Unit, onDelete: () -> Unit, onEdit: (String) -> Unit,
+    weekCount: Int = 0, onSetTarget: (Int?) -> Unit = {}
+) {
+    var showTarget by remember { mutableStateOf(false) }
+    var targetText by remember { mutableStateOf(todo.weeklyTarget?.toString() ?: "") }
     var isEditing by remember { mutableStateOf(false) }
     var editText by remember { mutableStateOf(todo.title) }
     val priorityColor = when (todo.priority.uppercase()) { "HIGH" -> RoseCrimson; "MEDIUM" -> AmberFlame; else -> EmeraldGlow }
@@ -253,11 +263,41 @@ fun GoalItemRow(todo: Todo, onToggle: () -> Unit, onDelete: () -> Unit, onEdit: 
                 IconButton(onClick = { isEditing = true; editText = todo.title }, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(16.dp))
                 }
+                // Weekly target
+                IconButton(onClick = { targetText = todo.weeklyTarget?.toString() ?: ""; showTarget = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.DateRange, contentDescription = "Weekly target", tint = if (todo.weeklyTarget != null) EmeraldGlow else TextMuted, modifier = Modifier.size(16.dp))
+                }
                 // Delete
                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RoseCrimson, modifier = Modifier.size(16.dp))
                 }
             }
         }
+        todo.weeklyTarget?.let { target ->
+            Column(Modifier.padding(start = 62.dp, end = 12.dp, bottom = 10.dp)) {
+                LinearProgressIndicator(
+                    progress = { (weekCount.toFloat() / target).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    color = EmeraldGlow, trackColor = SurfaceTier3
+                )
+                Text("$weekCount of $target days this week", color = Slate400, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+    if (showTarget) {
+        AlertDialog(
+            onDismissRequest = { showTarget = false },
+            title = { Text("Weekly target", fontWeight = FontWeight.Black) },
+            text = {
+                OutlinedTextField(
+                    value = targetText, onValueChange = { targetText = it.filter(Char::isDigit).take(1) },
+                    label = { Text("Days per week (1 to 7, empty for none)") }, singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                )
+            },
+            confirmButton = { TextButton(onClick = { onSetTarget(targetText.toIntOrNull()); showTarget = false }) { Text("SAVE", color = EmeraldGlow, fontWeight = FontWeight.Black) } },
+            dismissButton = { TextButton(onClick = { showTarget = false }) { Text("CANCEL", color = Slate400) } },
+            shape = RoundedCornerShape(20.dp), containerColor = MaterialTheme.colorScheme.surface
+        )
     }
 }

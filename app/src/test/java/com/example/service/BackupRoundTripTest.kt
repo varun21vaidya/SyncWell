@@ -30,7 +30,8 @@ class BackupRoundTripTest {
     @Test fun backupThenRestoreBringsEverythingBack() = runBlocking {
         val now = "2026-11-07T10:00:00Z"
         dao.insertAppSettings(AppSettings(id = "s", firebaseUid = "me@x.com", targetWeightKg = 80.0, createdAt = now, updatedAt = now, wakeTime = "06:30", vacationSince = "2026-11-05", weeklyGymTarget = 4, restSeconds = 120))
-        dao.insertTodos(listOf(Todo(id = "t1", title = "Buy milk", createdAt = now, updatedAt = now)))
+        dao.insertTodos(listOf(Todo(id = "t1", title = "Buy milk", createdAt = now, updatedAt = now, weeklyTarget = 4)))
+        dao.insertGoalCompletion(GoalCompletion("gc1", "t1", "Buy milk", "SHORT_TERM", "2026-11-06"))
         dao.insertWeightLogs(listOf(WeightLog("w1", "2026-11-07", 81.5, false, now)))
         dao.insertRoutineTemplate(RoutineTemplate(id = "r1", name = "Mine", repeatType = "ONCE", onceDate = "2026-11-09"))
         dao.insertRoutineTemplateItems(listOf(RoutineTemplateItem("i1", "r1", "Stretch", "HEALTH", 1, "07:00")))
@@ -49,6 +50,8 @@ class BackupRoundTripTest {
         CloudBackupService.restoreFromJson(dao, json)
 
         assertEquals("Buy milk", dao.getAllTodos().single().title)
+        assertEquals(4, dao.getAllTodos().single().weeklyTarget)
+        assertEquals("2026-11-06", dao.getAllGoalCompletions().single().completedOn)
         assertEquals(81.5, dao.getAllWeightLogs().single().weightKg, 0.0)
         val template = dao.getRoutineTemplates().single()
         assertEquals("2026-11-09", template.onceDate)
@@ -99,5 +102,12 @@ class BackupRoundTripTest {
         assertEquals(1, dao.getExerciseLibrary().count { it.name == "My curl" })
         assertEquals("phone_1", dao.getAllWorkoutSessionExercises().single { it.id == "bse" }.exerciseId)
         assertEquals("phone_1", dao.getAllWorkoutSessionExercises().single { it.id == "lse" }.exerciseId)
+    }
+
+    @Test fun olderBackupWithoutGoalHistoryRestoresTodosWithoutATarget() = runBlocking {
+        val json = """{"todos":[{"id":"t","title":"Old goal","createdAt":"2026-11-01T08:00:00Z"}]}"""
+        CloudBackupService.restoreFromJson(dao, json)
+        assertEquals(null, dao.getAllTodos().single().weeklyTarget)
+        assertTrue(dao.getAllGoalCompletions().isEmpty())
     }
 }

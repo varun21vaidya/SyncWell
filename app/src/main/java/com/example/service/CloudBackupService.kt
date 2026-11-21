@@ -57,9 +57,20 @@ object CloudBackupService {
                 put("isDeleted", t.isDeleted)
                 put("createdAt", t.createdAt)
                 put("updatedAt", t.updatedAt)
+                putOpt("weeklyTarget", t.weeklyTarget)
             })
         }
         root.put("todos", todosArr)
+
+        // Goal completion history
+        val completionsArr = JSONArray()
+        dao.getAllGoalCompletions().forEach { c ->
+            completionsArr.put(JSONObject().apply {
+                put("id", c.id); put("todoId", c.todoId); put("title", c.title)
+                put("goalType", c.goalType); put("completedOn", c.completedOn)
+            })
+        }
+        root.put("goalCompletions", completionsArr)
 
         // 2. Weight Logs
         val weights = dao.getAllWeightLogs()
@@ -527,10 +538,17 @@ object CloudBackupService {
                     isCompleted = obj.optBoolean("isCompleted", false),
                     isDeleted = obj.optBoolean("isDeleted", false),
                     createdAt = obj.getString("createdAt"),
-                    updatedAt = obj.optString("updatedAt", obj.getString("createdAt"))
+                    updatedAt = obj.optString("updatedAt", obj.getString("createdAt")),
+                    weeklyTarget = if (obj.has("weeklyTarget") && !obj.isNull("weeklyTarget")) obj.getInt("weeklyTarget") else null
                 ))
             }
             if (list.isNotEmpty()) dao.insertTodos(list)
+        }
+        root.optJSONArray("goalCompletions")?.let { arr -> // absent in older backups
+            val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->
+                GoalCompletion(o.getString("id"), o.getString("todoId"), o.getString("title"), o.optString("goalType", "SHORT_TERM"), o.getString("completedOn"))
+            }
+            if (list.isNotEmpty()) dao.insertGoalCompletions(list)
         }
 
         // 2. Weights

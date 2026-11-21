@@ -291,8 +291,21 @@ interface SyncWellDao {
     suspend fun updateTodo(todo: Todo)
 
     // FEATURE 11: Auto-reset completed goals
-    @Query("UPDATE todos SET isCompleted = 0, updatedAt = :nowIso WHERE goalType = 'SHORT_TERM' AND isCompleted = 1 AND updatedAt < :cutoffIso")
-    suspend fun resetCompletedShortTermGoalsBefore(cutoffIso: String, nowIso: String)
+    // Goal history: one row per goal per day, ignored when it already exists
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGoalCompletion(row: GoalCompletion)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGoalCompletions(rows: List<GoalCompletion>)
+
+    @Query("DELETE FROM goal_completions WHERE todoId = :todoId AND completedOn = :dateKey")
+    suspend fun deleteGoalCompletion(todoId: String, dateKey: String)
+
+    @Query("SELECT * FROM goal_completions WHERE completedOn BETWEEN :from AND :to")
+    fun getGoalCompletionsBetween(from: String, to: String): Flow<List<GoalCompletion>>
+
+    @Query("SELECT * FROM goal_completions ORDER BY completedOn")
+    suspend fun getAllGoalCompletions(): List<GoalCompletion>
 
     // Exercise Custom Notes — FEATURE 10
     @Query("SELECT * FROM exercise_custom_notes WHERE exerciseId = :exerciseId LIMIT 1")

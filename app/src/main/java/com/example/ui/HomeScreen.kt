@@ -52,6 +52,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val isVacationActive by viewModel.isVacationActive.collectAsState()
     val level by viewModel.level.collectAsState()
     val goals by viewModel.shortTermGoals.collectAsState()
+    val goalWeekCounts by viewModel.goalWeekCounts.collectAsState()
     val dayItems = remember(activeRoutineItems) {
         activeRoutineItems.map { DayItem(it.id, it.title, it.category, it.scheduledTime, it.isDone) }
     }
@@ -109,7 +110,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 activeRoutineItems.firstOrNull { it.id == next.id }?.let { viewModel.toggleRoutineItem(it) }
             }
         }
-        GoalsStrip(goals) { onNavigateToTab(4) }
+        GoalsStrip(goals, goalWeekCounts) { onNavigateToTab(4) }
 
         // Two Column Split: Hydration & Study Time
         Row(

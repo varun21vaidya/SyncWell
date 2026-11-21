@@ -43,4 +43,21 @@ class MigrationTest {
         db.query("SELECT activeSeconds, isDeleted FROM workout_sessions WHERE id = 'w1'").use { it.moveToFirst(); assertEquals(0, it.getInt(0)); assertEquals(0, it.getInt(1)) }
         db.query("SELECT isCompleted FROM todos WHERE id = 't1'").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
     }
+
+    @Test fun migrate9To10KeepsGoalsAndSeedsHistoryForTickedOnes() {
+        helper.createDatabase(dbName, 9).apply {
+            execSQL("INSERT INTO todos (id, title, priority, goalType, isCompleted, isDeleted, createdAt, updatedAt) VALUES ('t1', 'Read', 'HIGH', 'LONG_TERM', 1, 0, '2026-11-01T08:00:00Z', '2026-11-18T08:00:00Z')")
+            execSQL("INSERT INTO todos (id, title, priority, goalType, isCompleted, isDeleted, createdAt, updatedAt) VALUES ('t2', 'Run', 'LOW', 'SHORT_TERM', 0, 0, '2026-11-01T08:00:00Z', '2026-11-18T08:00:00Z')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 10, true, AppDatabase.MIGRATION_9_10)
+        db.query("SELECT title, isCompleted, weeklyTarget FROM todos ORDER BY id").use {
+            assertTrue(it.moveToFirst()); assertEquals("Read", it.getString(0)); assertEquals(1, it.getInt(1)); assertTrue(it.isNull(2))
+            assertTrue(it.moveToNext()); assertEquals("Run", it.getString(0))
+        }
+        db.query("SELECT todoId, completedOn FROM goal_completions").use {
+            assertEquals(1, it.count)
+            it.moveToFirst(); assertEquals("t1", it.getString(0)); assertEquals("2026-11-18", it.getString(1))
+        }
+    }
 }

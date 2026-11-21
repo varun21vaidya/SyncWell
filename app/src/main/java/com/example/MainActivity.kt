@@ -273,7 +273,7 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
                     Triple("Routine", Icons.Default.List, 1),
                     Triple("Workout", Icons.Default.Star, 2),
                     Triple("Focus", Icons.Default.PlayArrow, 3),
-                    Triple("Tasks", Icons.Default.Check, 4),
+                    Triple("Goals", Icons.Default.Check, 4),
                     Triple("Stats", Icons.Default.Info, 5),
                     Triple("Config", Icons.Default.Settings, 6)
                 )

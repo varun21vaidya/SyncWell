@@ -322,7 +322,21 @@ data class Todo(
     val isCompleted: Boolean = false,
     val isDeleted: Boolean = false,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val weeklyTarget: Int? = null // optional: how many days a week this goal should be done
+)
+
+/** One row each time a goal was completed (kept after the goal resets). One per goal per day. */
+@Entity(
+    tableName = "goal_completions",
+    indices = [Index(value = ["todoId", "completedOn"], unique = true)]
+)
+data class GoalCompletion(
+    @PrimaryKey val id: String,
+    val todoId: String,
+    val title: String,
+    val goalType: String,
+    val completedOn: String // YYYY-MM-DD
 )
 
 @Entity(tableName = "sync_queue")

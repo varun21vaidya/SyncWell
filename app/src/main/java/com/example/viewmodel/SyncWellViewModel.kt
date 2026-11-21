@@ -12,6 +12,7 @@ import com.example.service.CloudBackupService
 import com.example.service.DailyBackupReceiver
 import com.example.service.DriveConsentRequiredException
 import com.example.service.DayBoundaryManager
+import com.example.service.GoalService
 import com.example.service.HealthConnectService
 import com.example.service.ProgressiveOverloadEngine
 import com.example.service.SupplementValidator
@@ -1266,11 +1267,27 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleTodo(todo: Todo) {
+        val todayKey = DayBoundaryManager.currentTargetDate.value
         viewModelScope.launch {
             val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-            dao.insertTodo(todo.copy(isCompleted = !todo.isCompleted, updatedAt = todayIso))
+            GoalService.setCompleted(dao, todo, !todo.isCompleted, todayKey, todayIso)
         }
     }
+
+    /** Sets or clears (null) the weekly target of a goal. */
+    fun setGoalWeeklyTarget(todo: Todo, target: Int?) {
+        viewModelScope.launch {
+            val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+            dao.insertTodo(todo.copy(weeklyTarget = target?.takeIf { it in 1..7 }, updatedAt = iso))
+        }
+    }
+
+    // Days each goal was completed this week (Monday to Sunday), for progress bars
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val goalWeekCounts: StateFlow<Map<String, Int>> = DayBoundaryManager.currentTargetDate
+        .flatMapLatest { today -> WeekKey.of(today).let { dao.getGoalCompletionsBetween(it, WeekKey.addDays(it, 6)) } }
+        .map { rows -> rows.groupBy { it.todoId }.mapValues { it.value.size } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     fun deleteTodo(todo: Todo) {
         viewModelScope.launch {
@@ -1287,19 +1304,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // FEATURE 11: Goal auto-reset at midnight
+    // FEATURE 11: goals reset at the day or week boundary, with their history recorded first
     private fun resetCompletedGoalsOnRollover(todayKey: String) {
         viewModelScope.launch {
-            val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-            // Short-term: reset completed goals from before today (Uncheck)
-            val midnightCutoff = "${todayKey}T00:00:00Z"
-            dao.resetCompletedShortTermGoalsBefore(midnightCutoff, todayIso)
-
-            // Long-term: reset once the week it was ticked in is over (Monday start), even if the app was not opened on Sunday
-            val thisWeek = WeekKey.of(todayKey)
-            dao.getActiveLongTermGoals().first()
-                .filter { it.isCompleted && WeekKey.of(it.updatedAt.take(10)) != thisWeek }
-                .forEach { dao.insertTodo(it.copy(isCompleted = false, updatedAt = todayIso)) }
+            val nowIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+            GoalService.resetAtBoundary(dao, todayKey, nowIso)
         }
     }
 
