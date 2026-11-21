@@ -28,7 +28,7 @@ import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 import java.util.UUID
 
-val ROUTINE_CATEGORIES = listOf("DIET", "WORKOUT", "STUDY", "SUPPLEMENT", "HYGIENE", "HEALTH", "PREP", "OTHER")
+val ROUTINE_CATEGORIES = listOf("DIET", "WORKOUT", "STUDY", "SUPPLEMENT", "HYGIENE", "SKINCARE", "HAIRCARE", "HEALTH", "PREP", "OTHER")
 private val DAY_LABELS = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") // index = day, 0 = Sunday
 private val TIME_REGEX = Regex("([01]\\d|2[0-3]):[0-5]\\d")
 private val DATE_REGEX = Regex("\\d{4}-\\d{2}-\\d{2}")

@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import androidx.room.withTransaction
+import com.example.domain.*
 import com.example.service.AnalyticsComputationService
 import com.example.service.CloudBackupService
 import com.example.service.DailyBackupReceiver
@@ -42,6 +44,12 @@ sealed class AppLaunchState {
     object Ready : AppLaunchState()
 }
 
+data class Streaks(
+    val routine: StreakResult = StreakResult(0, 0, true),
+    val diet: StreakResult = StreakResult(0, 0, true),
+    val gym: GymStreakResult = GymStreakResult(0, 0, 0, 1)
+)
+
 class SyncWellViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -54,8 +62,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     // 1. AUTHENTICATION STORE (Simulated)
     private val _user = MutableStateFlow<String?>(null)
     val user: StateFlow<String?> = _user.asStateFlow()
-    val isAuthenticated: StateFlow<Boolean> = _user.map { it != null }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // 2. UI STORE
     private val _activeModal = MutableStateFlow<String?>(null)
@@ -102,8 +108,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     val workoutSetLogs: StateFlow<Map<String, List<WorkoutSetLog>>> = _workoutSetLogs.asStateFlow()
 
     // Helper Flow to select all exercises library
-    val exerciseLibrary: Flow<List<ExerciseLibraryItem>> = dao.getExerciseLibraryFlow()
-    val exerciseProgressions: Flow<List<ExerciseProgressionState>> = dao.getExerciseProgressionsFlow()
+    val exerciseLibrary: StateFlow<List<ExerciseLibraryItem>> = dao.getExerciseLibraryFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val weightLogs: Flow<List<WeightLog>> = dao.getWeightLogs()
 
     // 6. TRACKER STORE (Focus stopwatch clock)
@@ -146,8 +152,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     val exerciseCustomNotes: StateFlow<Map<String, String>> = _exerciseCustomNotes.asStateFlow()
 
     // 8. ANALYTICS STORE
-    val weeklyAnalytics: Flow<List<DailyAnalytics>> = dao.getWeeklyAnalytics()
-    val monthlyAnalytics: Flow<List<DailyAnalytics>> = dao.getMonthlyAnalytics()
+    // Last 30 days up to today; re-queries when the day changes
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val monthlyAnalytics: StateFlow<List<DailyAnalytics>> = DayBoundaryManager.currentTargetDate
+        .flatMapLatest { today -> dao.getAnalyticsBetween(WeekKey.addDays(today, -29), today) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Current and best streaks, read from the whole history so a 12-day streak still shows 12 before today qualifies
+    val streaks: StateFlow<Streaks> = combine(
+        dao.getAllDailyAnalyticsFlow(), dao.getFinishedSessionDatesFlow(), dao.getAppSettings(), DayBoundaryManager.currentTargetDate
+    ) { rows, sessionDates, settings, today ->
+        val past = rows.filter { it.dateKey <= today }
+        Streaks(
+            routine = StreakRule.compute(past.map { StreakDay(it.dateKey, DayCompletion.qualifies(it.routineCompletionPct), it.isVacation) }, today),
+            diet = StreakRule.compute(past.map { StreakDay(it.dateKey, it.isDietCompleted, it.isVacation) }, today),
+            gym = WeeklyGymStreak.compute(sessionDates, settings?.weeklyGymTarget ?: 3, today)
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Streaks())
     
     private val _todayAnalytics = MutableStateFlow<DailyAnalytics?>(null)
     val todayAnalytics: StateFlow<DailyAnalytics?> = _todayAnalytics.asStateFlow()
@@ -191,10 +212,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             checkSetupStatus()
             // FIX 6: Restore any in-progress workout session
             restoreActiveSessionFromPrefs()
+            restoreFocusFromPrefs()
             // FEATURE 14: Schedule the daily 9 PM backup alarm
             scheduleDailyBackupAt9PM()
             // Listen to active calendar changes to load layout
             DayBoundaryManager.currentTargetDate.collect { dateKey ->
+                catchUpVacation(dateKey)
                 loadTodayData(dateKey)
                 // FEATURE 11: Auto-reset completed goals on day rollover
                 resetCompletedGoalsOnRollover(dateKey)
@@ -324,12 +347,17 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Builds the day's routine from every template whose schedule matches [dateKey]. */
-    private suspend fun generateRoutine(dateKey: String, isVac: Boolean, doneTitles: Set<String> = emptySet()) {
+    private suspend fun generateRoutine(
+        dateKey: String,
+        isVac: Boolean,
+        doneTitles: Set<String> = emptySet(),
+        proteinAnswers: Map<String, String?> = emptyMap()
+    ) {
         val matching = RoutineSchedule.templatesForDate(dao.getRoutineTemplates(), dateKey)
         val routineId = UUID.randomUUID().toString()
         dao.insertDailyRoutine(DailyRoutine(routineId, dateKey, matching.firstOrNull()?.id, 0.0, isVac))
         val templateItems = matching.flatMap { dao.getRoutineTemplateItems(it.id) }
-        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles, dao.getAppSettingsDirectly()?.wakeTime ?: "00:00")
+        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles, dao.getAppSettingsDirectly()?.wakeTime ?: "00:00", proteinAnswers)
         if (items.isNotEmpty()) dao.insertDailyRoutineItems(items)
     }
 
@@ -338,11 +366,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val dateKey = DayBoundaryManager.currentTargetDate.value
         viewModelScope.launch {
             val done = dao.getDailyRoutineDirectly(dateKey)?.let { r ->
-                dao.getDailyRoutineItems(r.id).filter { it.isDone }.map { it.title }.toSet()
-            } ?: emptySet()
+                dao.getDailyRoutineItems(r.id).filter { it.isDone }
+            } ?: emptyList()
             dao.clearDailyRoutineItemsForDate(dateKey)
             dao.clearDailyRoutineForDate(dateKey)
-            generateRoutine(dateKey, _isVacationActive.value, done)
+            generateRoutine(dateKey, _isVacationActive.value, done.map { it.title }.toSet(), done.associate { it.title to it.proteinAnswer })
             loadTodayData(dateKey)
         }
     }
@@ -360,45 +388,27 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun confirmProteinIntake(item: DailyRoutineItem, tookProtein: Boolean) {
         _proteinConfirmationTask.value = null
-        // Even if they say 'No' to protein, we still mark the routine item as done.
-        // But we could potentially track 'protein taken' as a separate metric if needed.
-        // For now, the user says "when all four meet protein for the day we will count it".
-        // This implies we need to store 'proteinTaken' on the DailyRoutineItem.
-        // Let's add it to the entity if needed, or just assume done = protein met for now.
-        // Wait, the user says "it will ask confirmation took protien?".
-        // If they click No, maybe we don't count it for the diet streak?
-        // Let's stick to simple: mark as done.
-        executeRoutineToggle(item)
+        // The meal is ticked either way (it counts toward the 80%); only a Yes counts toward the diet streak.
+        executeRoutineToggle(item, if (tookProtein) DietRule.YES else DietRule.NO)
     }
 
     fun cancelProteinConfirmation() {
         _proteinConfirmationTask.value = null
     }
 
-    private fun executeRoutineToggle(item: DailyRoutineItem) {
+    private fun executeRoutineToggle(item: DailyRoutineItem, proteinAnswer: String? = null) {
+        val dateKey = DayBoundaryManager.currentTargetDate.value // read at tap time, so a tick at midnight lands on the day it was made
         viewModelScope.launch {
-            val updated = item.copy(isDone = !item.isDone)
+            // Unticking clears the answer, so the next tick asks again
+            val updated = item.copy(isDone = !item.isDone, proteinAnswer = if (item.isDone) null else proteinAnswer)
             dao.updateDailyRoutineItem(updated)
 
             // Update UI state directly
             val currentItems = _activeRoutineItems.value.map { if (it.id == item.id) updated else it }
             _activeRoutineItems.value = currentItems
 
-            // Re-calculate routine completion percentage
-            val doneCount = currentItems.count { it.isDone }
-            val total = if (currentItems.isNotEmpty()) currentItems.size else 1
-            val completedPct = doneCount.toDouble() / total.toDouble()
-
-            // Update parent DailyRoutine Row
-            val dateKey = DayBoundaryManager.currentTargetDate.value
-            val dailyRoutine = dao.getDailyRoutineDirectly(dateKey)
-            if (dailyRoutine != null) {
-                val updatedRoutine = dailyRoutine.copy(completionPct = completedPct)
-                dao.updateDailyRoutine(updatedRoutine)
-            }
-
-            // Repopulate statistics cache
-            AnalyticsComputationService.recalculateDayCache(dao, dateKey)
+            // Writes the day's percent and the statistics cache
+            AnalyticsComputationService.recalculateDayCache(dao, dateKey).onFailure { _message.tryEmit("Could not update stats") }
         }
     }
 
@@ -468,6 +478,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             checkForCloudBackup(email)
         }
     }
+
+    /** One-time messages for the UI (shown as a toast). */
+    private val _message = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val message: SharedFlow<String> = _message.asSharedFlow()
 
     // Drive consent: the Activity launches this and reports back via onDriveConsentResult()
     private val _driveConsentRequest = MutableSharedFlow<android.app.PendingIntent>(extraBufferCapacity = 1)
@@ -586,11 +600,9 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // stopService is allowed from the background (startService is not) and does nothing when the service is not running
     private fun stopTimerService() {
-        val intent = android.content.Intent(getApplication(), com.example.service.FocusTimerService::class.java).apply {
-            action = com.example.service.FocusTimerService.ACTION_STOP
-        }
-        getApplication<Application>().startService(intent)
+        getApplication<Application>().stopService(android.content.Intent(getApplication(), com.example.service.FocusTimerService::class.java))
     }
 
     fun scheduleAttentionCheck() {
@@ -625,6 +637,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             filter,
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
         )
+    }
+
+    override fun onCleared() {
+        getApplication<Application>().unregisterReceiver(focusReceiver)
+        super.onCleared()
     }
 
     // 3. SETTINGS INTERFACES
@@ -692,11 +709,14 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _activeContextType.value = type
         _isActiveTimerRunning.value = true
         startTimerService(type, _activeTodoTag.value)
+        val baseSec = _accumulatedSeconds.value
+        val runStartMs = System.currentTimeMillis()
+        persistFocus(type, baseSec, runStartMs)
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (_isActiveTimerRunning.value) {
                 delay(1000)
-                _accumulatedSeconds.value += 1
+                _accumulatedSeconds.value = baseSec + ((System.currentTimeMillis() - runStartMs) / 1000).toInt()
             }
         }
     }
@@ -705,6 +725,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _isActiveTimerRunning.value = false
         timerJob?.cancel()
         stopTimerService()
+        _activeContextType.value?.let { persistFocus(it, _accumulatedSeconds.value, null) }
     }
 
     fun resetTimer() {
@@ -713,6 +734,25 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _accumulatedSeconds.value = 0
         stopTimerService()
         _activeContextType.value = null
+        prefs.edit().remove("focus_type").remove("focus_tag").remove("focus_base_sec").remove("focus_run_start").apply()
+    }
+
+    // Focus session survives the app being killed: category, tag, seconds so far, and when the current run started (null = paused)
+    private fun persistFocus(type: String, baseSec: Int, runStartMs: Long?) {
+        prefs.edit().putString("focus_type", type).putString("focus_tag", _activeTodoTag.value)
+            .putInt("focus_base_sec", baseSec).putLong("focus_run_start", runStartMs ?: 0L).apply()
+    }
+
+    /** Restores a focus session left behind by a killed app, paused, so the user can save or reset it. */
+    private fun restoreFocusFromPrefs() {
+        val type = prefs.getString("focus_type", null) ?: return
+        val runStart = prefs.getLong("focus_run_start", 0L)
+        // The app was killed, so nobody was watching: count away time only up to the 6-minute auto-pause limit
+        val away = if (runStart > 0) ((System.currentTimeMillis() - runStart) / 1000).toInt().coerceIn(0, 360) else 0
+        _activeContextType.value = type
+        _activeTodoTag.value = prefs.getString("focus_tag", null)
+        _accumulatedSeconds.value = prefs.getInt("focus_base_sec", 0) + away
+        persistFocus(type, _accumulatedSeconds.value, null)
     }
 
     fun saveFocusSession() {
@@ -749,7 +789,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     // 5. WORKOUT MANAGER
+    private var startingWorkout = false
+
     fun startWorkoutSession(dayType: String, environment: String) {
+        if (startingWorkout) return // a second tap while the first start is still writing
+        startingWorkout = true
         val todayKey = DayBoundaryManager.currentTargetDate.value
         val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
         val session = WorkoutSession(
@@ -769,6 +813,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
         viewModelScope.launch {
             dao.insertWorkoutSession(session)
+            dao.softDeleteUnfinishedSessionsExcept(session.id) // earlier starts that were never finished or resumed
 
             // Select relevant exercises based on push/pull/legs muscle categories
             val targetedCategories = when {
@@ -867,6 +912,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
             _activeSessionExercises.value = sessionExercises
             _workoutSetLogs.value = defaultLogs
+            startingWorkout = false
         }
     }
 
@@ -1019,34 +1065,16 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun completeWorkoutSet(sessionExerciseId: String, setIndex: Int, reps: Int, weight: Double) {
-        val currentLogs = _workoutSetLogs.value[sessionExerciseId]?.toMutableList() ?: return
-        val targetIdx = currentLogs.indexOfFirst { it.setIndex == setIndex }
-        if (targetIdx != -1) {
-            val updatedLog = currentLogs[targetIdx].copy(reps = reps, weightKg = weight, isCompleted = true)
-            currentLogs[targetIdx] = updatedLog
-            
-            val updatedMap = _workoutSetLogs.value.toMutableMap()
-            updatedMap[sessionExerciseId] = currentLogs
-            _workoutSetLogs.value = updatedMap
-
-            viewModelScope.launch {
-                dao.insertWorkoutSetLogs(listOf(updatedLog))
-            }
-        }
-    }
-
-    fun stopWorkout() {
+    /** Throws the session away: it is stored as deleted so it never counts as a finished workout or as "last time" data. */
+    fun discardWorkout() {
         val session = _currentActiveSession.value ?: return
-        val endedIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-        val updatedSession = session.copy(endedAt = endedIso)
         viewModelScope.launch {
-            dao.insertWorkoutSession(updatedSession)
+            dao.softDeleteWorkoutSession(session.id)
             _currentActiveSession.value = null
             _activeSessionExercises.value = emptyList()
             _workoutSetLogs.value = emptyMap()
             clearActiveSessionFromPrefs() // FIX 6
-            AnalyticsComputationService.recalculateDayCache(dao, DayBoundaryManager.currentTargetDate.value)
+            AnalyticsComputationService.recalculateDayCache(dao, session.date)
         }
     }
 
@@ -1070,8 +1098,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     private suspend fun restoreActiveSessionFromPrefs() {
         val sessionId = prefs.getString("active_session_id", null) ?: return
-        val sessions = dao.getWorkoutSessions().first()
-        val session = sessions.find { it.id == sessionId && it.endedAt == null }
+        val session = dao.getWorkoutSessionById(sessionId)?.takeIf { it.endedAt == null && !it.isDeleted }
         if (session == null) { clearActiveSessionFromPrefs(); return }
         _currentActiveSession.value = session
         val exercises = dao.getWorkoutSessionExercises(session.id)
@@ -1118,6 +1145,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val endedIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
         val updatedSession = session.copy(endedAt = endedIso)
         viewModelScope.launch {
+            // One transaction: a kill halfway must not leave an ended session with only some next-time targets saved
+            db.withTransaction {
             dao.insertWorkoutSession(updatedSession)
             _activeSessionExercises.value.forEach { se ->
                 val logs = _workoutSetLogs.value[se.id] ?: emptyList()
@@ -1161,11 +1190,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                     )
                 }
             }
+            }
             _currentActiveSession.value = null
             _activeSessionExercises.value = emptyList()
             _workoutSetLogs.value = emptyMap()
             clearActiveSessionFromPrefs() // FIX 6
-            AnalyticsComputationService.recalculateDayCache(dao, DayBoundaryManager.currentTargetDate.value)
+            AnalyticsComputationService.recalculateDayCache(dao, session.date)
         }
     }
 
@@ -1217,10 +1247,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             val midnightCutoff = "${todayKey}T00:00:00Z"
             dao.resetCompletedShortTermGoalsBefore(midnightCutoff, todayIso)
 
-            // Long-term: reset on Sunday midnight (Uncheck)
-            if (DayBoundaryManager.isSunday()) {
-                dao.resetCompletedLongTermGoalsBefore(midnightCutoff, todayIso)
-            }
+            // Long-term: reset once the week it was ticked in is over (Monday start), even if the app was not opened on Sunday
+            val thisWeek = WeekKey.of(todayKey)
+            dao.getActiveLongTermGoals().first()
+                .filter { it.isCompleted && WeekKey.of(it.updatedAt.take(10)) != thisWeek }
+                .forEach { dao.insertTodo(it.copy(isCompleted = false, updatedAt = todayIso)) }
         }
     }
 
@@ -1240,6 +1271,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 createdAt = todayIso
             )
             dao.insertVacationDay(day)
+            dao.getAppSettingsDirectly()?.let { dao.insertAppSettings(it.copy(vacationSince = if (isVac) todayKey else null)) }
 
             val routine = dao.getDailyRoutineDirectly(todayKey)
             if (routine != null) {
@@ -1248,6 +1280,16 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
             AnalyticsComputationService.recalculateDayCache(dao, todayKey)
         }
+    }
+
+    /** While vacation is on, every day since it started gets a vacation row, even days the app was not opened. */
+    private suspend fun catchUpVacation(todayKey: String) {
+        val since = dao.getAppSettingsDirectly()?.vacationSince ?: return
+        val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+        val missing = WeekKey.range(since, todayKey).filter { dao.getVacationDayByDate(it) == null }
+        if (missing.isEmpty()) return
+        dao.insertVacationDays(missing.map { VacationDay(UUID.randomUUID().toString(), it, false, iso) })
+        AnalyticsComputationService.recalculateRange(dao, missing.first(), WeekKey.addDays(todayKey, -1))
     }
 
     // ROUTINE EDITING (templates + today's list). Callers ask "apply to today?" and then call rebuildTodayRoutine().
@@ -1266,9 +1308,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     private suspend fun refreshTodayCompletion() {
         val dateKey = DayBoundaryManager.currentTargetDate.value
-        val r = dao.getDailyRoutineDirectly(dateKey) ?: return
-        val items = dao.getDailyRoutineItems(r.id)
-        dao.updateDailyRoutine(r.copy(completionPct = if (items.isEmpty()) 0.0 else items.count { it.isDone }.toDouble() / items.size))
         AnalyticsComputationService.recalculateDayCache(dao, dateKey)
     }
 

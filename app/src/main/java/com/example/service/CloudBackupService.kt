@@ -87,6 +87,7 @@ object CloudBackupService {
                 put("startedAt", ws.startedAt)
                 putOpt("endedAt", ws.endedAt)
                 put("isDeleted", ws.isDeleted)
+                put("activeSeconds", ws.activeSeconds)
             })
         }
         root.put("workoutSessions", workoutSessionsArr)
@@ -259,6 +260,7 @@ object CloudBackupService {
                 put("orderIndex", ri.orderIndex)
                 putOpt("scheduledTime", ri.scheduledTime)
                 put("isDone", ri.isDone)
+                putOpt("proteinAnswer", ri.proteinAnswer)
             })
         }
         root.put("dailyRoutineItems", driArr)
@@ -309,6 +311,10 @@ object CloudBackupService {
                 put("wakeTime", st.wakeTime)
                 put("sleepTime", st.sleepTime)
                 put("workoutDays", st.workoutDays)
+                putOpt("vacationSince", st.vacationSince)
+                put("weeklyGymTarget", st.weeklyGymTarget)
+                put("restTimerEnabled", st.restTimerEnabled)
+                put("restSeconds", st.restSeconds)
             })
         }
 
@@ -442,7 +448,11 @@ object CloudBackupService {
                 wakeTime = o.optString("wakeTime", "07:00"),
                 sleepTime = o.optString("sleepTime", "23:00"),
                 workoutDays = o.optString("workoutDays", "[1,2,3,4,5]"),
-                onboardingAnswered = true
+                onboardingAnswered = true,
+                vacationSince = if (o.isNull("vacationSince")) null else o.optString("vacationSince"),
+                weeklyGymTarget = o.optInt("weeklyGymTarget", 3),
+                restTimerEnabled = o.optBoolean("restTimerEnabled", false),
+                restSeconds = o.optInt("restSeconds", 90)
             ))
         }
         root.optJSONObject("notificationSettings")?.let { o ->
@@ -483,8 +493,15 @@ object CloudBackupService {
             }
             if (list.isNotEmpty()) dao.insertRoutineTemplateItems(list)
         }
+        // exercise_library.name is unique: a backup exercise with the same name as one already on the phone reuses the phone's id
+        val existingByName = dao.getExerciseLibrary().associate { it.name to it.id }
+        val exerciseIdMap = mutableMapOf<String, String>()
+        fun mapEx(id: String) = exerciseIdMap[id] ?: id
         root.optJSONArray("customExercises")?.let { arr ->
-            val list = (0 until arr.length()).map { arr.getJSONObject(it) }.map { o ->
+            val list = (0 until arr.length()).map { arr.getJSONObject(it) }.filter { o ->
+                val existing = existingByName[o.getString("name")]
+                if (existing != null && existing != o.getString("id")) { exerciseIdMap[o.getString("id")] = existing; false } else true
+            }.map { o ->
                 ExerciseLibraryItem(
                     id = o.getString("id"), name = o.getString("name"), category = o.getString("category"),
                     defaultSets = o.getInt("defaultSets"), defaultRepsMin = o.getInt("defaultRepsMin"),
@@ -544,7 +561,8 @@ object CloudBackupService {
                     environment = obj.optString("environment", "GYM"),
                     startedAt = obj.getString("startedAt"),
                     endedAt = if (obj.has("endedAt") && !obj.isNull("endedAt")) obj.getString("endedAt") else null,
-                    isDeleted = obj.optBoolean("isDeleted", false)
+                    isDeleted = obj.optBoolean("isDeleted", false),
+                    activeSeconds = obj.optInt("activeSeconds", 0)
                 ))
             }
             if (list.isNotEmpty()) dao.insertWorkoutSessions(list)
@@ -558,7 +576,7 @@ object CloudBackupService {
                 list.add(WorkoutSessionExercise(
                     id = obj.getString("id"),
                     sessionId = obj.getString("sessionId"),
-                    exerciseId = obj.getString("exerciseId"),
+                    exerciseId = mapEx(obj.getString("exerciseId")),
                     orderIndex = obj.getInt("orderIndex"),
                     targetSets = obj.getInt("targetSets"),
                     targetRepsMax = obj.getInt("targetRepsMax"),
@@ -591,7 +609,7 @@ object CloudBackupService {
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 list.add(ExerciseProgressionState(
-                    exerciseId = obj.getString("exerciseId"),
+                    exerciseId = mapEx(obj.getString("exerciseId")),
                     suggestedWeightKg = obj.getDouble("suggestedWeightKg"),
                     suggestedReps = obj.getInt("suggestedReps"),
                     lastUpdatedAt = obj.getString("lastUpdatedAt")
@@ -702,7 +720,7 @@ object CloudBackupService {
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 list.add(ExerciseCustomNote(
-                    exerciseId = obj.getString("exerciseId"),
+                    exerciseId = mapEx(obj.getString("exerciseId")),
                     customNote = obj.getString("customNote"),
                     updatedAt = obj.getString("updatedAt")
                 ))
@@ -731,14 +749,19 @@ object CloudBackupService {
             val list = mutableListOf<DailyRoutineItem>()
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
+                val isDone = obj.optBoolean("isDone", false)
+                val category = obj.getString("category")
                 list.add(DailyRoutineItem(
                     id = obj.getString("id"),
                     dailyRoutineId = obj.getString("dailyRoutineId"),
                     title = obj.getString("title"),
-                    category = obj.getString("category"),
+                    category = category,
                     orderIndex = obj.getInt("orderIndex"),
                     scheduledTime = if (obj.has("scheduledTime") && !obj.isNull("scheduledTime")) obj.getString("scheduledTime") else null,
-                    isDone = obj.optBoolean("isDone", false)
+                    isDone = isDone,
+                    // An older backup has no answer; a ticked meal then counted as protein met
+                    proteinAnswer = if (obj.has("proteinAnswer") && !obj.isNull("proteinAnswer")) obj.getString("proteinAnswer")
+                        else if (isDone && category == "DIET") "YES" else null
                 ))
             }
             if (list.isNotEmpty()) dao.insertDailyRoutineItems(list)

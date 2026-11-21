@@ -2,6 +2,8 @@ package com.example.service
 
 import com.example.data.DailyAnalytics
 import com.example.data.SyncWellDao
+import com.example.domain.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -9,43 +11,24 @@ import java.util.Locale
 
 object AnalyticsComputationService {
 
-    suspend fun recalculateDayCache(dao: SyncWellDao, dateKey: String): Boolean {
+    /**
+     * Recomputes one day: writes the routine's percent from its items (the only place that math lives),
+     * then the day's analytics row with streaks derived from the whole history.
+     */
+    suspend fun recalculateDayCache(dao: SyncWellDao, dateKey: String): Result<DailyAnalytics> {
         return try {
             val dailyRoutine = dao.getDailyRoutineDirectly(dateKey)
-            val routinePct = dailyRoutine?.completionPct ?: 0.0
+            val items = dailyRoutine?.let { dao.getDailyRoutineItems(it.id) } ?: emptyList()
+            val routinePct = DayCompletion.of(items.count { it.isDone }, items.size).percent
+            if (dailyRoutine != null && dailyRoutine.completionPct != routinePct) {
+                dao.updateDailyRoutine(dailyRoutine.copy(completionPct = routinePct))
+            }
 
-            // Query tracker sessions
-            // The DAO returns isDeleted = 0. We'll filter the list for correct categories.
             var studyMins = 0
             var workMins = 0
             var timepassMins = 0
             var sleepMins = 0
-
-            // We retrieve tracker sessions directly from Flow inside ViewModel, but for computation,
-            // we will query a list. Let's make sure our Dao has a direct retrieve query of list if needed,
-            // or we can collect from flow briefly, or we can add a synchronous method to Dao.
-            // Let's add a list-returning query to SyncWellDao or query it. Wait! Let's check our SyncWellDao. It returns Flow<List<TrackerSession>>.
-            // To collect a single list safely, we can do flow.first() or similar. Since we want standard list retrieve,
-            // let's look at what SyncWellDao already has:
-            // Flow<List<TrackerSession>> getTrackerSessions(dateKey).
-            // Flow lists are fully reactive. Let's write a suspend function in DAO that returns list directly,
-            // or we can check what DAO queries can be written. Yes! We can just add another Query to DAO or add a direct getter.
-            // Wait, we have getTrackerSessions(dateKey) returning Flow. We can collect it or simply use a direct list query.
-            // Let's check if we can add a list-getter, or we can just use a helper DAO method or use flow collection.
-            // Let's add a Direct List query in DAO or make a robust retrieve. Let's check our SyncWellDao again.
-            // Ah! We can easily use flow collection: `import kotlinx.coroutines.flow.first`.
-            // But let's look at the tracker sessions we can gather. Let's query them.
-            
-            // Wait! To keep it simple, we can add queries to SyncWellDao that return Lists directly for computational services if needed.
-            // Wait, we can implement it by just having a Direct List retrieve, or we can write a simple database list getter.
-            // Since we created SyncWellDao in a previous step, let's see if we can edit it or if we can use flow.first().
-            // `kotlinx.coroutines.flow.firstOrNull` or `first` is standard and extremely easy to use! Let's use `first()` on the flow returned.
-            // Let's list analytical components.
-            
-            val trackerFlow = dao.getTrackerSessions(dateKey)
-            // Let's collect the first emission from the flow
-            val sessions: List<com.example.data.TrackerSession> = trackerFlow.first()
-            sessions.forEach { s ->
+            dao.getTrackerSessions(dateKey).first().forEach { s ->
                 val dur = s.durationMin ?: 0
                 when (s.activityType) {
                     "STUDY" -> studyMins += dur
@@ -55,83 +38,49 @@ object AnalyticsComputationService {
                 }
             }
 
-            // Water logs
-            val waterFlow = dao.getWaterLogs(dateKey)
-            val waterEntries: List<com.example.data.WaterLog> = waterFlow.first()
-            val totalWater = waterEntries.sumOf { it.amountMl }
-
-            // Steps logs
-            val stepsEntry = dao.getStepsLog(dateKey)
-            val totalSteps = stepsEntry?.stepCount ?: 0
-
-            // Weight logs
-            val weightEntry = dao.getWeightLogByDate(dateKey)
-            val weightKg = weightEntry?.weightKg
-
-            // Vacation status
+            val totalWater = dao.getWaterLogs(dateKey).first().sumOf { it.amountMl }
+            val totalSteps = dao.getStepsLog(dateKey)?.stepCount ?: 0
+            val weightKg = dao.getWeightLogByDate(dateKey)?.weightKg
             val isVacation = dao.getVacationDayByDate(dateKey) != null
 
-            // Streak check - compute active streaks using last 7 days or we can fetch/compute recursively.
-            var streakValue = 0
-            var gymStreakValue = 0
-            var dietStreakValue = 0
+            // The caller-visible history is dense: a past day with no row is a 0% day unless it was a vacation day
+            val vacationDates = dao.getAllVacationDays().map { it.date }.toSet()
+            val history = dao.getAnalyticsBetween("0000-01-01", WeekKey.addDays(dateKey, -1)).first()
+            val rowDates = history.map { it.dateKey }.toSet()
+            val vacationOnly = vacationDates.filter { it < dateKey && it !in rowDates }
 
-            val yesterdayStr = getOffsetDateString(dateKey, -1)
-            val yesterdayAnalyticsResult = dao.getDailyAnalyticsDirectly(yesterdayStr)
-            
-            val yesterdayStreak = yesterdayAnalyticsResult?.streakValue ?: 0
-            val yesterdayGymStreak = yesterdayAnalyticsResult?.gymStreakValue ?: 0
-            val yesterdayDietStreak = yesterdayAnalyticsResult?.dietStreakValue ?: 0
+            val routineDays = history.map { StreakDay(it.dateKey, DayCompletion.qualifies(it.routineCompletionPct), it.isVacation || it.dateKey in vacationDates) } +
+                vacationOnly.map { StreakDay(it, false, true) } +
+                StreakDay(dateKey, DayCompletion.qualifies(routinePct), isVacation)
+            val streakValue = StreakRule.compute(routineDays, dateKey).current
 
-            // General Habit Streak
-            if (routinePct >= 0.8) {
-                streakValue = yesterdayStreak + 1
-            } else if (isVacation) {
-                streakValue = yesterdayStreak
-            }
+            // Gym: finished sessions only (a discarded session is stored as deleted), counted in weeks
+            val finishedDates = dao.getFinishedSessionDates()
+            val isGymCompleted = dateKey in finishedDates
+            val weeklyTarget = dao.getAppSettingsDirectly()?.weeklyGymTarget ?: 3
+            val gymStreakValue = WeeklyGymStreak.compute(finishedDates, weeklyTarget, dateKey).currentWeeks
 
-            // Gym Streak Logic
-            val isGymCompleted = dao.getDailyRoutineItems(dailyRoutine?.id ?: "").any {
-                it.category == "WORKOUT" && it.isDone
-            }
-            if (isGymCompleted) {
-                gymStreakValue = yesterdayGymStreak + 1
-            } else if (isVacation) {
-                gymStreakValue = yesterdayGymStreak
-            }
+            // Diet: a meal counts only when ticked with protein answered Yes
+            val diet = DietRule.evaluate(items.filter { it.category == "DIET" }.map { DietMeal(it.isDone, it.proteinAnswer) })
+            val dietDays = history.map { StreakDay(it.dateKey, it.isDietCompleted, it.isVacation || it.dateKey in vacationDates) } +
+                vacationOnly.map { StreakDay(it, false, true) } +
+                StreakDay(dateKey, diet.qualifies, isVacation)
+            val dietStreakValue = StreakRule.compute(dietDays, dateKey).current
 
-            // Diet Streak Logic (Protein Points)
-            // Assuming dietProteinPoints is updated elsewhere and stored in DB, or we compute here.
-            // Let's compute based on current items.
-            val proteinItems = dao.getDailyRoutineItems(dailyRoutine?.id ?: "").filter { it.category == "DIET" }
-            val dietProteinPoints = proteinItems.count { it.isDone }
-            val isDietCompleted = proteinItems.isNotEmpty() && dietProteinPoints >= minOf(4, proteinItems.size)
-
-            if (isDietCompleted) {
-                dietStreakValue = yesterdayDietStreak + 1
-            } else if (isVacation) {
-                dietStreakValue = yesterdayDietStreak
-            }
-
-            // Workout Sessions & Duration
-            val workoutSessions = dao.getWorkoutSessionsByDate(dateKey)
-            var workoutMins = 0
+            // Workout minutes: active time when recorded, otherwise start to end
             val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            workoutSessions.forEach { ws ->
-                if (ws.endedAt != null) {
-                    try {
-                        val sTime = isoFormat.parse(ws.startedAt)?.time ?: 0L
-                        val eTime = isoFormat.parse(ws.endedAt)?.time ?: 0L
-                        if (eTime > sTime) {
-                            workoutMins += ((eTime - sTime) / (1000 * 60)).toInt()
-                        }
-                    } catch (_: Exception) {}
-                }
+            var workoutMins = 0
+            dao.getWorkoutSessionsByDate(dateKey).forEach { ws ->
+                if (ws.endedAt == null) return@forEach
+                if (ws.activeSeconds > 0) {
+                    workoutMins += ws.activeSeconds / 60
+                } else try {
+                    val span = (isoFormat.parse(ws.endedAt)?.time ?: 0L) - (isoFormat.parse(ws.startedAt)?.time ?: 0L)
+                    if (span > 0) workoutMins += (span / 60_000).toInt()
+                } catch (_: Exception) {}
             }
 
-            val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-
-            val computedAnalytics = DailyAnalytics(
+            val computed = DailyAnalytics(
                 dateKey = dateKey,
                 routineCompletionPct = routinePct,
                 totalStudyMinutes = studyMins,
@@ -145,32 +94,23 @@ object AnalyticsComputationService {
                 streakValue = streakValue,
                 gymStreakValue = gymStreakValue,
                 dietStreakValue = dietStreakValue,
-                dietProteinPoints = dietProteinPoints,
+                dietProteinPoints = diet.points.coerceAtMost(4),
                 isGymCompleted = isGymCompleted,
-                isDietCompleted = isDietCompleted,
+                isDietCompleted = diet.qualifies,
                 isVacation = isVacation,
-                updatedAt = todayIso
+                updatedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
             )
-
-            dao.insertDailyAnalytics(computedAnalytics)
-            true
+            dao.insertDailyAnalytics(computed)
+            Result.success(computed)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
-            false
+            Result.failure(e)
         }
     }
 
-    private fun getOffsetDateString(dateStr: String, daysOffset: Int): String {
-        return try {
-            val dfs = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val date = dfs.parse(dateStr) ?: Date()
-            val calendar = java.util.Calendar.getInstance().apply {
-                time = date
-                add(java.util.Calendar.DAY_OF_YEAR, daysOffset)
-            }
-            dfs.format(calendar.time)
-        } catch (e: Exception) {
-            dateStr
-        }
+    /** Recomputes each day from [fromKey] to [toKey], oldest first, so later days see the earlier rows. */
+    suspend fun recalculateRange(dao: SyncWellDao, fromKey: String, toKey: String) {
+        WeekKey.range(fromKey, toKey).forEach { recalculateDayCache(dao, it) }
     }
 }

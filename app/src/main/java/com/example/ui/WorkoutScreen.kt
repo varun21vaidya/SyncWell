@@ -49,6 +49,21 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
     var isViewingActiveSession by remember { mutableStateOf(true) }
     // FIX 6: Holds (dayType, environment) of the new session the user wants to switch to
     var pendingSwitchDayType by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var confirmDiscard by remember { mutableStateOf(false) }
+
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text("Discard this workout?", fontWeight = FontWeight.Black) },
+            text = { Text("The sets you logged will be thrown away and it will not count as a workout.") },
+            confirmButton = {
+                TextButton(onClick = { confirmDiscard = false; viewModel.discardWorkout() }) {
+                    Text("Discard", color = RoseCrimson, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Keep going", color = Slate400) } }
+        )
+    }
 
     BackHandler(enabled = currentActiveSession != null && isViewingActiveSession) {
         isViewingActiveSession = false
@@ -170,7 +185,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                                 }
 
                                 TextButton(
-                                    onClick = { viewModel.stopWorkout() },
+                                    onClick = { confirmDiscard = true },
                                     colors = ButtonDefaults.textButtonColors(contentColor = RoseCrimson),
                                 ) {
                                     Text("Discard", fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -616,7 +631,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
                     }
                     OutlinedButton(
                         onClick = {
-                            viewModel.stopWorkout()
+                            viewModel.discardWorkout()
                             viewModel.startWorkoutSession(newDayType, env)
                             pendingSwitchDayType = null
                             isViewingActiveSession = true

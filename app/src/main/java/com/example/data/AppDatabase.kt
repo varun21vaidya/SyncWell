@@ -33,7 +33,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SyncQueueItem::class,
         ExerciseCustomNote::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -59,6 +59,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE daily_routine_items ADD COLUMN proteinAnswer TEXT")
+                // Before this column a ticked meal counted as protein met, so keep those days as they were.
+                db.execSQL("UPDATE daily_routine_items SET proteinAnswer = 'YES' WHERE category = 'DIET' AND isDone = 1")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN vacationSince TEXT")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN weeklyGymTarget INTEGER NOT NULL DEFAULT 3")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN restTimerEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN restSeconds INTEGER NOT NULL DEFAULT 90")
+                db.execSQL("ALTER TABLE workout_sessions ADD COLUMN activeSeconds INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -66,7 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "syncwell_db"
                 )
-                    .addMigrations(MIGRATION_7_8)
+                    .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                 INSTANCE = instance
                 instance

@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DailyAnalytics
 import com.example.data.WeightLog
+import com.example.domain.DietMeal
+import com.example.domain.DietRule
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -49,7 +51,6 @@ data class ChartDataItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(viewModel: SyncWellViewModel) {
-    val weeklyAnalytics by viewModel.weeklyAnalytics.collectAsState(initial = emptyList())
     val monthlyAnalytics by viewModel.monthlyAnalytics.collectAsState(initial = emptyList())
     val weightLogs by viewModel.weightLogs.collectAsState(initial = emptyList())
     val analyticsLastRefreshed by viewModel.analyticsLastRefreshed.collectAsState()
@@ -57,20 +58,15 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
     val targetWeightKg by viewModel.targetWeightKg.collectAsState()
     val todayAnalytics by viewModel.todayAnalytics.collectAsState()
     
-    val isGymDoneToday = remember(activeRoutineItems) {
-        activeRoutineItems.any { (it.title.contains("Gym", ignoreCase = true) || it.title.contains("Workout", ignoreCase = true)) && it.isDone }
-    }
+    val streaks by viewModel.streaks.collectAsState()
+    val gym = streaks.gym
+    val isGymDoneToday = gym.thisWeekCount >= gym.target
 
-    val proteinItems = remember(activeRoutineItems) {
-        activeRoutineItems.filter {
-            it.title.contains("Breakfast", ignoreCase = true) ||
-            it.title.contains("Lunch", ignoreCase = true) ||
-            it.title.contains("Dinner", ignoreCase = true) ||
-            it.title.contains("Protein", ignoreCase = true)
-        }
+    // Same rule the analytics service stores, so Stats and the streak always agree
+    val dietToday = remember(activeRoutineItems) {
+        DietRule.evaluate(activeRoutineItems.filter { it.category == "DIET" }.map { DietMeal(it.isDone, it.proteinAnswer) })
     }
-    val proteinPointsToday = proteinItems.count { it.isDone }
-    val isDietDoneToday = proteinPointsToday >= 4
+    val isDietDoneToday = dietToday.qualifies
 
     var selectedPeriod by remember { mutableStateOf("DAILY") }
     var weightInput by remember(targetWeightKg) {
@@ -113,12 +109,10 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
     val totalTrackedTime = totalFocusMins + totalTimepassMins
     val productivityRate = if (totalTrackedTime > 0) (totalFocusMins * 100) / totalTrackedTime else 100
 
-    val totalSteps = remember(periodItems) { periodItems.sumOf { it.totalSteps } }
-    val avgStepsPerDay = if (periodItems.isNotEmpty()) totalSteps / periodItems.size else 0
     val totalWorkoutMins = remember(periodItems) { periodItems.sumOf { it.totalWorkoutMinutes } }
     val workoutsCompleted = remember(periodItems) { periodItems.count { it.isGymCompleted || it.totalWorkoutMinutes > 0 } }
 
-    val streakCount = todayAnalytics?.streakValue ?: 0
+    val streak = streaks.routine
 
     Column(
         modifier = Modifier
@@ -200,7 +194,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "🔥 $streakCount day streak",
+                                text = "🔥 ${streak.current} day streak · Best ${streak.best}",
                                 color = EmeraldGlow,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -280,11 +274,11 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("ACTIVITY & STEPS", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("WORKOUTS", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Icon(Icons.Default.Favorite, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
                         }
                         Text(
-                            text = if (totalSteps >= 1000) String.format(Locale.US, "%,d", totalSteps) else "$totalSteps",
+                            text = "$workoutsCompleted",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Black
@@ -294,7 +288,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "$workoutsCompleted workouts (${totalWorkoutMins}m)",
+                                text = "${totalWorkoutMins}m trained",
                                 color = GoldAccent,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -393,10 +387,15 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = if (isGymDoneToday) "🔥 Active" else "Pending",
+                        text = "${gym.currentWeeks} wk streak",
                         color = if (isGymDoneToday) EmeraldGlow else MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "This week ${gym.thisWeekCount}/${gym.target} · Best ${gym.bestWeeks} wk",
+                        color = Slate400,
+                        fontSize = 10.sp
                     )
                 }
             }
@@ -425,10 +424,15 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = if (isDietDoneToday) "🔥 Active" else "$proteinPointsToday/4 Pts",
+                        text = "${streaks.diet.current} day streak",
                         color = if (isDietDoneToday) EmeraldGlow else MaterialTheme.colorScheme.onSurface,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Today ${dietToday.points}/${dietToday.required} protein meals · Best ${streaks.diet.best}",
+                        color = Slate400,
+                        fontSize = 10.sp
                     )
                 }
             }
@@ -669,105 +673,6 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
-            }
-        }
-
-        // =========================================================================
-        // SECTION C: PHYSICAL ACTIVITY & DAILY STEP TREND
-        // =========================================================================
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, OledBorder)
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "PHYSICAL ACTIVITY & STEPS",
-                            color = Slate400,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Step Count Progression",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = AmberDim,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "Avg: $avgStepsPerDay/day",
-                            color = GoldAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    aggregatedData.forEach { chartItem ->
-                        StepActivityBarRow(
-                            label = chartItem.label,
-                            steps = chartItem.steps,
-                            workoutMins = chartItem.workoutMinutes,
-                            maxSteps = 12000f
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(GoldAccent))
-                        Text(
-                            text = "Target: 8k baseline",
-                            color = GoldAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(EmeraldGlow))
-                        Text(
-                            text = "Stretch: 10k goal",
-                            color = EmeraldGlow,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                }
             }
         }
 

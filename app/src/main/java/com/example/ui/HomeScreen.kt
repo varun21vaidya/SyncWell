@@ -34,19 +34,15 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val activeRoutineItems by viewModel.activeRoutineItems.collectAsState()
     val todayWaterLogs by viewModel.todayWaterLogs.collectAsState()
     val todayAnalytics by viewModel.todayAnalytics.collectAsState()
-    val todayStepsLog by viewModel.todayStepsLog.collectAsState()
+    val streaks by viewModel.streaks.collectAsState()
     val weightLogs by viewModel.weightLogs.collectAsState(initial = emptyList())
     val targetWeightKg by viewModel.targetWeightKg.collectAsState()
     val waterGoalMl by viewModel.waterGoalMl.collectAsState()
     val latestWeight = weightLogs.firstOrNull()?.weightKg
 
-    var showManualStepsDialog by remember { mutableStateOf(false) }
-    var manualStepsInput by remember { mutableStateOf("") }
-
     val totalWaterMl = todayWaterLogs.sumOf { it.amountMl }
-    val activeStreak = todayAnalytics?.streakValue ?: 0
+    val activeStreak = streaks.routine
     val studyMins = todayAnalytics?.totalStudyMinutes ?: 0
-    val totalSteps = todayStepsLog?.stepCount ?: 0
 
     val completedCount = activeRoutineItems.count { it.isDone }
     val totalCount = if (activeRoutineItems.isNotEmpty()) activeRoutineItems.size else 1
@@ -101,7 +97,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "$activeStreak Days",
+                    text = "${activeStreak.current} Days · Best ${activeStreak.best}",
                     color = AmberFlame,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black
@@ -332,95 +328,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
             }
         }
 
-        // Steps Metrics Sync Panel (Uses core Refresh icon)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, OledBorder)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "STEPS COUNT",
-                        color = Slate400,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = "$totalSteps Steps",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        IconButton(
-                            onClick = {
-                                manualStepsInput = totalSteps.toString()
-                                showManualStepsDialog = true
-                            },
-                            modifier = Modifier
-                                .size(24.dp)
-                                .testTag("steps_manual_edit_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit steps manually",
-                                tint = EmeraldGlow,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = { viewModel.syncStepsWithHealthConnect() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = SurfaceTier2,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, OledBorder),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    modifier = Modifier.testTag("health_sync_button")
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Sync steps Icon",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            "Health Sync",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                }
-            }
-        }
-
         // Bodyweight Target metrics info card
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -446,64 +353,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     lineHeight = 18.sp
                 )
             }
-        }
-
-        if (showManualStepsDialog) {
-            AlertDialog(
-                onDismissRequest = { showManualStepsDialog = false },
-                title = {
-                    Text(
-                        text = "MANUALLY LOG STEPS",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Customize your recorded active steps for today's physical activity index:",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            fontSize = 12.sp
-                        )
-                        OutlinedTextField(
-                            value = manualStepsInput,
-                            onValueChange = { manualStepsInput = it },
-                            placeholder = { Text("e.g. 10420", fontSize = 14.sp) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("steps_manual_input"),
-                            shape = RoundedCornerShape(10.dp),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGlow,
-                                unfocusedBorderColor = OledBorder,
-                                focusedContainerColor = SurfaceTier2,
-                                unfocusedContainerColor = SurfaceTier2
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val steps = manualStepsInput.toIntOrNull() ?: 0
-                            viewModel.saveManualSteps(steps)
-                            showManualStepsDialog = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
-                        modifier = Modifier.testTag("steps_manual_save_button")
-                    ) {
-                        Text("Save Steps", color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showManualStepsDialog = false }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                    }
-                }
-            )
         }
     }
 }

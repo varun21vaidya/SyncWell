@@ -20,7 +20,11 @@ data class AppSettings(
     val wakeTime: String = "07:00",
     val sleepTime: String = "23:00",
     val workoutDays: String = "[1,2,3,4,5]", // 0 = Sunday
-    val onboardingAnswered: Boolean = false
+    val onboardingAnswered: Boolean = false,
+    val vacationSince: String? = null, // first day of the vacation in progress; null when off
+    val weeklyGymTarget: Int = 3,
+    val restTimerEnabled: Boolean = false,
+    val restSeconds: Int = 90
 )
 
 @Entity(tableName = "notification_settings")
@@ -121,7 +125,8 @@ data class DailyRoutineItem(
     val category: String,
     val orderIndex: Int,
     val scheduledTime: String?,
-    val isDone: Boolean = false
+    val isDone: Boolean = false,
+    val proteinAnswer: String? = null // DIET items only: YES / NO, null until answered
 )
 
 @Entity(tableName = "workout_templates")
@@ -174,7 +179,8 @@ data class WorkoutSession(
     val environment: String, // GYM, HOME
     val startedAt: String,
     val endedAt: String?,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val activeSeconds: Int = 0
 )
 
 @Entity(

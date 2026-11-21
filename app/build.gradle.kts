@@ -54,6 +54,8 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  // Debug builds only (never the release bundle): lets the migration unit test read the exported schemas
+  sourceSets { getByName("debug").assets.srcDir("$projectDir/schemas") }
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -97,6 +99,7 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.room.testing)
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)

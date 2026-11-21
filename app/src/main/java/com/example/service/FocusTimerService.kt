@@ -56,6 +56,7 @@ class FocusTimerService : Service() {
                 startForeground(NOTIFICATION_ID, buildLiveNotification())
             }
             ACTION_STOP -> {
+                cancelAttentionCheck()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -63,7 +64,7 @@ class FocusTimerService : Service() {
                 cancelAttentionCheck()
             }
             ACTION_PAUSE -> {
-                val stopIntent = Intent("com.example.FOCUS_PAUSE")
+                val stopIntent = Intent("com.example.FOCUS_PAUSE").setPackage(packageName)
                 sendBroadcast(stopIntent)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -78,6 +79,11 @@ class FocusTimerService : Service() {
         return START_NOT_STICKY
     }
 
+    override fun onDestroy() {
+        cancelAttentionCheck()
+        super.onDestroy()
+    }
+
     private fun scheduleAttentionFlow() {
         cancelAttentionCheck()
 
@@ -88,7 +94,7 @@ class FocusTimerService : Service() {
         // T+6:00 Auto-Pause
         autoPauseRunnable = Runnable {
             postPauseSentinel()
-            val stopIntent = Intent("com.example.FOCUS_PAUSE")
+            val stopIntent = Intent("com.example.FOCUS_PAUSE").setPackage(packageName)
             sendBroadcast(stopIntent)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()

@@ -28,9 +28,15 @@ object RoutineSchedule {
     private fun minutes(t: String) = t.take(2).toInt() * 60 + t.takeLast(2).toInt()
 
     /** Merges the items of every matching template into one list ordered from [wakeTime], so 00:30 comes after 23:00. */
-    fun buildDayItems(routineId: String, items: List<RoutineTemplateItem>, doneTitles: Set<String> = emptySet(), wakeTime: String = "00:00"): List<DailyRoutineItem> =
+    fun buildDayItems(
+        routineId: String,
+        items: List<RoutineTemplateItem>,
+        doneTitles: Set<String> = emptySet(),
+        wakeTime: String = "00:00",
+        proteinAnswers: Map<String, String?> = emptyMap()
+    ): List<DailyRoutineItem> =
         items.sortedWith(compareBy({ t -> t.scheduledTime?.let { (minutes(it) - minutes(wakeTime) + 1440) % 1440 } ?: Int.MAX_VALUE }, { it.orderIndex }))
             .mapIndexed { i, t ->
-                DailyRoutineItem(UUID.randomUUID().toString(), routineId, t.title, t.category, i + 1, t.scheduledTime, t.title in doneTitles)
+                DailyRoutineItem(UUID.randomUUID().toString(), routineId, t.title, t.category, i + 1, t.scheduledTime, t.title in doneTitles, proteinAnswers[t.title])
             }
 }

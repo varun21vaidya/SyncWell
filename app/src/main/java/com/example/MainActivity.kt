@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
         ) notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.message.collect { android.widget.Toast.makeText(this@MainActivity, it, android.widget.Toast.LENGTH_SHORT).show() } }
                 viewModel.driveConsentRequest.collect { pendingIntent ->
                     driveConsentLauncher.launch(
                         androidx.activity.result.IntentSenderRequest.Builder(pendingIntent.intentSender).build()

@@ -37,7 +37,7 @@ interface SyncWellDao {
     @Query("SELECT * FROM vacation_days WHERE isDeleted = 0")
     fun getActiveVacationDays(): Flow<List<VacationDay>>
 
-    @Query("SELECT * FROM vacation_days WHERE date = :date LIMIT 1")
+    @Query("SELECT * FROM vacation_days WHERE date = :date AND isDeleted = 0 LIMIT 1")
     suspend fun getVacationDayByDate(date: String): VacationDay?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -108,9 +108,6 @@ interface SyncWellDao {
 
     @Query("SELECT * FROM daily_routine_items WHERE dailyRoutineId = :dailyRoutineId ORDER BY orderIndex ASC")
     suspend fun getDailyRoutineItems(dailyRoutineId: String): List<DailyRoutineItem>
-
-    @Query("SELECT * FROM daily_routine_items WHERE dailyRoutineId = :dailyRoutineId ORDER BY orderIndex ASC")
-    fun getDailyRoutineItemsFlow(dailyRoutineId: String): Flow<List<DailyRoutineItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyRoutineItems(items: List<DailyRoutineItem>)
@@ -207,9 +204,6 @@ interface SyncWellDao {
     suspend fun insertTrackerSession(session: TrackerSession)
 
     // Supplement Logs
-    @Query("SELECT * FROM supplement_logs WHERE dateKey = :dateKey")
-    fun getSupplementLogs(dateKey: String): Flow<List<SupplementLog>>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSupplementLog(log: SupplementLog)
 
@@ -247,11 +241,34 @@ interface SyncWellDao {
     @Query("SELECT * FROM daily_analytics WHERE dateKey = :dateKey LIMIT 1")
     fun getDailyAnalytics(dateKey: String): Flow<DailyAnalytics?>
 
-    @Query("SELECT * FROM daily_analytics ORDER BY dateKey DESC LIMIT 7")
-    fun getWeeklyAnalytics(): Flow<List<DailyAnalytics>>
+    // Streaks need the whole history, not the latest rows
+    @Query("SELECT * FROM daily_analytics ORDER BY dateKey ASC")
+    fun getAllDailyAnalyticsFlow(): Flow<List<DailyAnalytics>>
 
-    @Query("SELECT * FROM daily_analytics ORDER BY dateKey DESC LIMIT 30")
-    fun getMonthlyAnalytics(): Flow<List<DailyAnalytics>>
+    // Discarded sessions are stored with isDeleted = 1, so they never count
+    @Query("SELECT date FROM workout_sessions WHERE isDeleted = 0 AND endedAt IS NOT NULL")
+    fun getFinishedSessionDatesFlow(): Flow<List<String>>
+
+    @Query("SELECT date FROM workout_sessions WHERE isDeleted = 0 AND endedAt IS NOT NULL")
+    suspend fun getFinishedSessionDates(): List<String>
+
+    @Query("SELECT * FROM daily_analytics WHERE dateKey BETWEEN :from AND :to ORDER BY dateKey")
+    fun getAnalyticsBetween(from: String, to: String): Flow<List<DailyAnalytics>>
+
+    @Query("SELECT date FROM workout_sessions WHERE isDeleted = 0 AND endedAt IS NOT NULL AND date >= :from")
+    suspend fun getFinishedSessionDatesSince(from: String): List<String>
+
+    @Query("SELECT COUNT(*) FROM daily_analytics WHERE routineCompletionPct >= 0.8")
+    fun countQualifyingDays(): Flow<Int>
+
+    @Query("SELECT * FROM workout_sessions WHERE id = :id LIMIT 1")
+    suspend fun getWorkoutSessionById(id: String): WorkoutSession?
+
+    @Query("UPDATE workout_sessions SET isDeleted = 1 WHERE endedAt IS NULL AND id != :keepId")
+    suspend fun softDeleteUnfinishedSessionsExcept(keepId: String)
+
+    @Query("UPDATE workout_sessions SET isDeleted = 1 WHERE id = :id")
+    suspend fun softDeleteWorkoutSession(id: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyAnalytics(analytics: DailyAnalytics)
@@ -276,9 +293,6 @@ interface SyncWellDao {
     // FEATURE 11: Auto-reset completed goals
     @Query("UPDATE todos SET isCompleted = 0, updatedAt = :nowIso WHERE goalType = 'SHORT_TERM' AND isCompleted = 1 AND updatedAt < :cutoffIso")
     suspend fun resetCompletedShortTermGoalsBefore(cutoffIso: String, nowIso: String)
-
-    @Query("UPDATE todos SET isCompleted = 0, updatedAt = :nowIso WHERE goalType = 'LONG_TERM' AND isCompleted = 1 AND updatedAt < :cutoffIso")
-    suspend fun resetCompletedLongTermGoalsBefore(cutoffIso: String, nowIso: String)
 
     // Exercise Custom Notes — FEATURE 10
     @Query("SELECT * FROM exercise_custom_notes WHERE exerciseId = :exerciseId LIMIT 1")

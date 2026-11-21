@@ -47,6 +47,8 @@ fun getRoutineDetailedGuide(item: DailyRoutineItem): RoutineDetailedInfo {
         "STUDY" -> "A focused work or study block." to listOf("Silence notifications and pick one task.", "Take a short break after each block.")
         "SUPPLEMENT" -> "A vitamin or supplement you chose." to listOf("Take it at the time you set, usually with food.", "Check with a health professional if you are unsure what suits you.")
         "HYGIENE" -> "A personal care or hydration habit." to listOf("Keep it short and consistent.", "Drink water through the day.")
+        "SKINCARE" -> "A skincare step." to listOf("Keep the order the same each time so it becomes automatic.", "Sunscreen is the step that matters most in the morning.")
+        "HAIRCARE" -> "A hair care step." to listOf("Apply it at the same time each day and give it weeks to show results.")
         "HEALTH" -> "A health or recovery habit." to listOf("Light movement and a regular sleep time support recovery.")
         "PREP" -> "A preparation step for what comes next." to listOf("A few minutes now saves effort later.")
         else -> "A custom item in your routine." to listOf("Edit or remove it any time from Manage routines.")
