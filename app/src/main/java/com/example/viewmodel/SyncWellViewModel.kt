@@ -171,6 +171,54 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Streaks())
     
+    // Stats: the last 12 weeks for the heatmap, and this week against last week
+    data class StatsData(val days: List<HeatmapDay> = emptyList(), val comparison: WeekComparison? = null)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val statsData: StateFlow<StatsData> = DayBoundaryManager.currentTargetDate.flatMapLatest { today ->
+        val from = HeatmapGrid.firstDay(today)
+        combine(dao.getAnalyticsBetween(from, today), dao.getDayCountsBetween(from, today)) { rows, counts ->
+            val countByDate = counts.associateBy { it.dateKey }
+            StatsData(
+                days = rows.map { r ->
+                    val c = countByDate[r.dateKey]
+                    HeatmapDay(r.dateKey, r.routineCompletionPct, c?.done ?: 0, c?.total ?: 0, r.isVacation)
+                },
+                comparison = WeekCompare.of(rows.map { DayStat(it.dateKey, it.routineCompletionPct, it.isGymCompleted, it.totalStudyMinutes + it.workMin) }, today)
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsData())
+
+    // Badges: earned once and kept. The first run records existing history silently; later unlocks pop up.
+    private val _badges = MutableStateFlow(prefs.getStringSet("badges_earned", null)?.toSet() ?: emptySet())
+    val badges: StateFlow<Set<String>> = _badges.asStateFlow()
+    private val unlockQueue = MutableStateFlow<List<String>>(emptyList())
+    val unlockedBadge: StateFlow<Badge?> = unlockQueue.map { q -> q.firstOrNull()?.let { id -> BadgeRules.ALL.firstOrNull { it.id == id } } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun dismissUnlock() { unlockQueue.value = unlockQueue.value.drop(1) }
+
+    private fun onBadgesEvaluated(earned: Set<String>) {
+        val stored = prefs.getStringSet("badges_earned", null)?.toSet() ?: emptySet()
+        val initialized = prefs.getBoolean("badges_initialized", false)
+        val fresh = earned - stored
+        if (fresh.isEmpty() && initialized) return
+        prefs.edit().putStringSet("badges_earned", stored + earned).putBoolean("badges_initialized", true).apply()
+        _badges.value = stored + earned
+        if (initialized) unlockQueue.value = unlockQueue.value + fresh.sorted()
+    }
+
+    // Weekly review: Sunday only, once per week until dismissed
+    private val reviewDismissedWeek = MutableStateFlow(prefs.getString("review_dismissed_week", null))
+    val showWeeklyReview: StateFlow<Boolean> = combine(DayBoundaryManager.currentTargetDate, reviewDismissedWeek) { d, w -> WeeklyReview.shouldShow(d, w) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun dismissWeeklyReview() {
+        val week = WeekKey.of(DayBoundaryManager.currentTargetDate.value)
+        prefs.edit().putString("review_dismissed_week", week).apply()
+        reviewDismissedWeek.value = week
+    }
+
     // Level from every qualifying day (80% or more) in the history
     val level: StateFlow<LevelResult> = dao.countQualifyingDays().map { LevelRule.of(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LevelRule.of(0))
@@ -212,6 +260,15 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private var todayDataJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            combine(dao.getAllDailyAnalyticsFlow(), dao.getCategoryDayCountsFlow(), dao.getAppSettings()) { rows, cats, settings ->
+                BadgeRules.earned(BadgeInput(
+                    rows.map { BadgeDay(it.dateKey, it.routineCompletionPct, it.isDietCompleted, it.totalWaterMl) },
+                    cats.map { CategoryDay(it.dateKey, it.category, it.done, it.total) },
+                    settings?.defaultWaterMl ?: 0
+                ))
+            }.collect { onBadgesEvaluated(it) }
+        }
         viewModelScope.launch {
             // Check onboarding database target on startup
             checkSetupStatus()

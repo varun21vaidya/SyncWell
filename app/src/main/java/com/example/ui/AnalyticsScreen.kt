@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
 import com.example.ui.theme.*
+import com.example.service.DayBoundaryManager
 import com.example.viewmodel.SyncWellViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -154,6 +155,18 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                 Icon(Icons.Default.Refresh, contentDescription = "Refresh Analytics", tint = EmeraldGlow)
             }
         }
+
+        // Weekly review (Sunday, dismissable), week comparison, heatmap, achievements
+        val showReview by viewModel.showWeeklyReview.collectAsState()
+        val statsData by viewModel.statsData.collectAsState()
+        val earnedBadges by viewModel.badges.collectAsState()
+        val goalWeekCounts by viewModel.goalWeekCounts.collectAsState()
+        statsData.comparison?.let { cmp ->
+            if (showReview) WeeklyReviewCard(cmp, goalWeekCounts.values.sum(), onDismiss = { viewModel.dismissWeeklyReview() })
+            WeekComparisonCard(cmp)
+        }
+        HeatmapCard(statsData.days, today = DayBoundaryManager.currentTargetDate.collectAsState().value)
+        AchievementsCard(earnedBadges)
 
         // =========================================================================
         // EXECUTIVE 4-CARD KPI OVERVIEW MATRIX

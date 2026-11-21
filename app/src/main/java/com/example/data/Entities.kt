@@ -326,6 +326,10 @@ data class Todo(
     val weeklyTarget: Int? = null // optional: how many days a week this goal should be done
 )
 
+/** Query results, not tables. */
+data class DayCount(val dateKey: String, val done: Int, val total: Int)
+data class CategoryDayCount(val dateKey: String, val category: String, val done: Int, val total: Int)
+
 /** One row each time a goal was completed (kept after the goal resets). One per goal per day. */
 @Entity(
     tableName = "goal_completions",

@@ -270,6 +270,14 @@ interface SyncWellDao {
     @Query("UPDATE workout_sessions SET isDeleted = 1 WHERE id = :id")
     suspend fun softDeleteWorkoutSession(id: String)
 
+    // Routine items done / total per day, for the heatmap tap text
+    @Query("SELECT r.date AS dateKey, COALESCE(SUM(i.isDone), 0) AS done, COUNT(i.id) AS total FROM daily_routines r JOIN daily_routine_items i ON i.dailyRoutineId = r.id WHERE r.date BETWEEN :from AND :to GROUP BY r.date")
+    fun getDayCountsBetween(from: String, to: String): Flow<List<DayCount>>
+
+    // Per category and day over all history, for badges
+    @Query("SELECT r.date AS dateKey, i.category AS category, COALESCE(SUM(i.isDone), 0) AS done, COUNT(i.id) AS total FROM daily_routines r JOIN daily_routine_items i ON i.dailyRoutineId = r.id GROUP BY r.date, i.category")
+    fun getCategoryDayCountsFlow(): Flow<List<CategoryDayCount>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyAnalytics(analytics: DailyAnalytics)
 

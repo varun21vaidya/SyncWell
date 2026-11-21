@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
             val activeModal by viewModel.activeModal.collectAsState()
             val linkPrompt by viewModel.linkPrompt.collectAsState()
             val proteinTask by viewModel.proteinConfirmationTask.collectAsState()
+            val unlockedBadge by viewModel.unlockedBadge.collectAsState()
 
             MyApplicationTheme(darkTheme = true) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -157,6 +158,17 @@ class MainActivity : ComponentActivity() {
                     containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
                 )
             }
+
+                    unlockedBadge?.let { b ->
+                        AlertDialog(
+                            onDismissRequest = { viewModel.dismissUnlock() },
+                            title = { Text("Achievement unlocked", fontWeight = FontWeight.Black) },
+                            text = { Text("${b.title}: ${b.how}") },
+                            confirmButton = { TextButton(onClick = { viewModel.dismissUnlock() }) { Text("NICE", color = Emerald600, fontWeight = FontWeight.Black) } },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                        )
+                    }
 
                     linkPrompt?.let { p ->
                         AlertDialog(
