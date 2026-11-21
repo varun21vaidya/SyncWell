@@ -4,7 +4,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 
@@ -87,11 +91,15 @@ fun MyApplicationTheme(
     content: @Composable () -> Unit
 ) {
     // Dark Mode Only: The application is designed exclusively with the high-performance OLED Dark Theme
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography  = Typography
-    ) {
-        // Tabular numbers everywhere, so counters and timers do not jump as digits change
-        ProvideTextStyle(TextStyle(fontFeatureSettings = "tnum"), content)
+    val context = LocalContext.current
+    val reducedMotion = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+    CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+        MaterialTheme(
+            colorScheme = DarkColorScheme,
+            typography  = Typography
+        ) {
+            // Tabular numbers everywhere, so counters and timers do not jump as digits change
+            ProvideTextStyle(TextStyle(fontFeatureSettings = "tnum"), content)
+        }
     }
 }

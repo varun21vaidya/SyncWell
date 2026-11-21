@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.*
@@ -29,7 +30,7 @@ private fun StatsCard(title: String, modifier: Modifier = Modifier, content: @Co
         border = BorderStroke(1.dp, OledBorder)
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(title, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             content()
         }
     }
@@ -37,7 +38,7 @@ private fun StatsCard(title: String, modifier: Modifier = Modifier, content: @Co
 
 @Composable
 fun WeekComparisonCard(c: WeekComparison, streak: Int = 0) {
-    StatsCard("THIS WEEK VS LAST WEEK", Modifier.testTag("week_comparison_card")) {
+    StatsCard("This week vs last week", Modifier.testTag("week_comparison_card")) {
         val note = when {
             c.deltaPoints > 0 -> "Up ${c.deltaPoints} points on the same days last week"
             c.deltaPoints < 0 -> "Down ${-c.deltaPoints} points on the same days last week"
@@ -52,7 +53,7 @@ fun WeekComparisonCard(c: WeekComparison, streak: Int = 0) {
         Text("Compared over the first ${c.daysCompared} day${if (c.daysCompared == 1) "" else "s"} of each week.", color = Slate400, fontSize = 10.sp)
         val context = androidx.compose.ui.platform.LocalContext.current
         TextButton(onClick = { ShareCard.share(context, c, streak) }, modifier = Modifier.testTag("share_week")) {
-            Text("SHARE MY WEEK", color = EmeraldGlow, fontWeight = FontWeight.Black)
+            Text("Share my week", color = Progress, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -73,7 +74,7 @@ fun HeatmapCard(days: List<HeatmapDay>, today: String) {
     val byDate = remember(days) { days.associateBy { it.dateKey } }
     val weeks = remember(today) { HeatmapGrid.weeks(today) }
     var selected by remember { mutableStateOf<HeatmapDay?>(null) }
-    StatsCard("LAST 12 WEEKS", Modifier.testTag("heatmap_card")) {
+    StatsCard("Last 12 weeks", Modifier.testTag("heatmap_card")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             weeks.forEach { week ->
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -111,25 +112,70 @@ private fun tileColor(day: HeatmapDay?, future: Boolean) = when {
 }
 
 @Composable
-fun AchievementsCard(earned: Set<String>) {
-    StatsCard("ACHIEVEMENTS", Modifier.testTag("achievements_card")) {
-        BadgeRules.ALL.forEach { b ->
-            val has = b.id in earned
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(if (has) EmeraldGlow else SurfaceTier3))
-                Column(Modifier.weight(1f)) {
-                    Text(b.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = if (has) MaterialTheme.colorScheme.onSurface else Slate400)
-                    Text(b.how, fontSize = 11.sp, color = Slate400)
+fun MedalGrid(states: List<BadgeState>, dates: Map<String, String>, onSelect: (BadgeState) -> Unit) {
+    StatsCard("Medals", Modifier.testTag("medal_grid")) {
+        Text("${states.count { it.earned }} of ${states.size} earned", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        var index = 0
+        BadgeGroup.values().forEach { g ->
+            val inGroup = states.filter { it.badge.group == g }.sortedBy { !it.earned } // earned first, catalogue order otherwise
+            if (inGroup.isEmpty()) return@forEach
+            Text(g.title, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+            inGroup.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { s -> MedalCell(s, dates[s.badge.id], index++, Modifier.weight(1f), onSelect) }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-                Text(if (has) "Earned" else "Locked", fontSize = 11.sp, color = if (has) EmeraldGlow else Slate400)
             }
         }
     }
 }
 
 @Composable
+private fun MedalCell(s: BadgeState, date: String?, index: Int, modifier: Modifier, onSelect: (BadgeState) -> Unit) {
+    Column(
+        modifier.clickable { onSelect(s) }.padding(vertical = 6.dp).testTag("medal_${s.badge.id}"),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        BadgeMedal(s.badge, s.earned, 84.dp, staggerMs = (index % 6) * 280)
+        Text(s.badge.title, color = if (s.earned) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 2, textAlign = TextAlign.Center)
+        if (s.earned) {
+            val times = if (s.badge.id == "FRESH_START" && s.count > 1) " x${s.count}" else ""
+            Text(BadgeRules.earnedLabel(date) + times, color = TextMuted, fontSize = 11.sp)
+        } else {
+            LinearProgressIndicator(
+                progress = { s.fraction }, modifier = Modifier.width(64.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                color = Streak, trackColor = Surface3
+            )
+            Text(s.progressText, color = TextMuted, fontSize = 11.sp)
+        }
+    }
+}
+
+/** Opens when a medal is tapped: its name, how to earn it, and the day it was earned or its progress. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MedalSheet(s: BadgeState, date: String?, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Surface2) {
+        Column(
+            Modifier.fillMaxWidth().padding(24.dp).navigationBarsPadding().testTag("medal_sheet"),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            BadgeMedal(s.badge, s.earned, 140.dp)
+            Text(s.badge.title, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text(s.badge.how, color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+            if (s.earned) Text(BadgeRules.earnedLabel(date), color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            else {
+                LinearProgressIndicator(progress = { s.fraction }, modifier = Modifier.fillMaxWidth(0.6f).height(6.dp).clip(RoundedCornerShape(3.dp)), color = Streak, trackColor = Surface3)
+                Text(BadgeRules.progressLine(s), color = TextSecondary, fontSize = 13.sp)
+            }
+            TextButton(onClick = onDismiss) { Text("Keep going", color = Progress, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
 fun WeeklyReviewCard(c: WeekComparison, goalsDone: Int, onDismiss: () -> Unit) {
-    StatsCard("YOUR WEEK", Modifier.testTag("weekly_review_card")) {
+    StatsCard("Your week", Modifier.testTag("weekly_review_card")) {
         Text(
             "${c.thisWeek.qualifyingDays} good days, ${c.thisWeek.workouts} workouts, ${Math.round(c.thisWeek.avgPercent * 100)}% average routine.",
             fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface
@@ -143,6 +189,6 @@ fun WeeklyReviewCard(c: WeekComparison, goalsDone: Int, onDismiss: () -> Unit) {
             fontSize = 12.sp, color = Slate400
         )
         if (goalsDone > 0) Text("$goalsDone goal check-offs this week.", fontSize = 12.sp, color = Slate400)
-        TextButton(onClick = onDismiss, modifier = Modifier.testTag("dismiss_weekly_review")) { Text("DISMISS", color = Slate400, fontWeight = FontWeight.Black) }
+        TextButton(onClick = onDismiss, modifier = Modifier.testTag("dismiss_weekly_review")) { Text("Hide", color = TextSecondary, fontWeight = FontWeight.Bold) }
     }
 }

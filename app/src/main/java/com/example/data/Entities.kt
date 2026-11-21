@@ -331,6 +331,7 @@ data class Todo(
 /** Query results, not tables. */
 data class DayCount(val dateKey: String, val done: Int, val total: Int)
 data class HabitDayRow(val dateKey: String, val templateItemId: String, val done: Boolean)
+data class FocusDayRow(val dateKey: String, val maxMinutes: Int)
 data class CategoryDayCount(val dateKey: String, val category: String, val done: Int, val total: Int)
 
 /** Optional cardio finisher of a workout session (several per session are allowed). */

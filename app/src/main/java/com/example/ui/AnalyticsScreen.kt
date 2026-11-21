@@ -156,17 +156,20 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
-        // Weekly review (Sunday, dismissable), week comparison, heatmap, achievements
+        // Weekly review (Sunday, hide-able), week summary, medals, heatmap
         val showReview by viewModel.showWeeklyReview.collectAsState()
         val statsData by viewModel.statsData.collectAsState()
-        val earnedBadges by viewModel.badges.collectAsState()
+        val badgeStates by viewModel.badgeStates.collectAsState()
+        val badgeDates by viewModel.badgeDates.collectAsState()
         val goalWeekCounts by viewModel.goalWeekCounts.collectAsState()
+        var selectedMedal by remember { mutableStateOf<String?>(null) }
         statsData.comparison?.let { cmp ->
             if (showReview) WeeklyReviewCard(cmp, goalWeekCounts.values.sum(), onDismiss = { viewModel.dismissWeeklyReview() })
             WeekComparisonCard(cmp, streaks.routine.current)
         }
+        MedalGrid(badgeStates, badgeDates) { selectedMedal = it.badge.id }
         HeatmapCard(statsData.days, today = DayBoundaryManager.currentTargetDate.collectAsState().value)
-        AchievementsCard(earnedBadges)
+        badgeStates.firstOrNull { it.badge.id == selectedMedal }?.let { MedalSheet(it, badgeDates[it.badge.id]) { selectedMedal = null } }
 
         // =========================================================================
         // EXECUTIVE 4-CARD KPI OVERVIEW MATRIX

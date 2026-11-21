@@ -252,23 +252,37 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsData())
 
-    // Badges: earned once and kept. The first run records existing history silently; later unlocks pop up.
-    private val _badges = MutableStateFlow(prefs.getStringSet("badges_earned", null)?.toSet() ?: emptySet())
-    val badges: StateFlow<Set<String>> = _badges.asStateFlow()
+    // Medals: the state of each one, earned once and kept. The first run, and the first run after the catalogue grows,
+    // record existing history silently; later unlocks pop up, at most 3 in a row.
+    private val _badgeStates = MutableStateFlow<List<BadgeState>>(emptyList())
+    val badgeStates: StateFlow<List<BadgeState>> = _badgeStates.asStateFlow()
+    val nextStamp: StateFlow<BadgeState?> = _badgeStates.map { BadgeRules.nextStamp(it) }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _badgeDates = MutableStateFlow(
+        (prefs.getStringSet("badge_dates", null) ?: emptySet()).mapNotNull { e -> e.split("=", limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
+    )
+    val badgeDates: StateFlow<Map<String, String>> = _badgeDates.asStateFlow() // medal id -> day it was earned (absent for history recorded silently)
+
     private val unlockQueue = MutableStateFlow<List<String>>(emptyList())
     val unlockedBadge: StateFlow<Badge?> = unlockQueue.map { q -> q.firstOrNull()?.let { id -> BadgeRules.ALL.firstOrNull { it.id == id } } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun dismissUnlock() { unlockQueue.value = unlockQueue.value.drop(1) }
 
-    private fun onBadgesEvaluated(earned: Set<String>) {
-        val stored = prefs.getStringSet("badges_earned", null)?.toSet() ?: emptySet()
-        val initialized = prefs.getBoolean("badges_initialized", false)
-        val fresh = earned - stored
-        if (fresh.isEmpty() && initialized) return
-        prefs.edit().putStringSet("badges_earned", stored + earned).putBoolean("badges_initialized", true).apply()
-        _badges.value = stored + earned
-        if (initialized) unlockQueue.value = unlockQueue.value + fresh.sorted()
+    private fun onBadgesEvaluated(states: List<BadgeState>) {
+        _badgeStates.value = states
+        val earned = states.filter { it.earned }.map { it.badge.id }.toSet()
+        val celebrated = prefs.getStringSet("badges_earned", null)?.toSet() ?: emptySet()
+        val silent = !prefs.getBoolean("badges_initialized", false) || prefs.getInt("badge_catalogue_version", 0) < BADGE_CATALOGUE_VERSION
+        val plan = BadgeCelebration.plan(earned, celebrated, silent, BadgeRules.ALL.map { it.id })
+        if (plan.celebrated == celebrated && !silent) return
+        val today = DayBoundaryManager.currentTargetDate.value
+        val dates = if (silent) _badgeDates.value else _badgeDates.value + (earned - celebrated).associateWith { today }
+        prefs.edit().putStringSet("badges_earned", plan.celebrated)
+            .putStringSet("badge_dates", dates.map { "${it.key}=${it.value}" }.toSet())
+            .putBoolean("badges_initialized", true).putInt("badge_catalogue_version", BADGE_CATALOGUE_VERSION).apply()
+        _badgeDates.value = dates
+        unlockQueue.value = unlockQueue.value + plan.queue
     }
 
     // Weekly review: Sunday only, once per week until dismissed
@@ -370,12 +384,21 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     init {
         viewModelScope.launch {
-            combine(dao.getAllDailyAnalyticsFlow(), dao.getCategoryDayCountsFlow(), dao.getAppSettings()) { rows, cats, settings ->
-                BadgeRules.earned(BadgeInput(
-                    rows.map { BadgeDay(it.dateKey, it.routineCompletionPct, it.isDietCompleted, it.totalWaterMl) },
-                    cats.map { CategoryDay(it.dateKey, it.category, it.done, it.total) },
-                    settings?.defaultWaterMl ?: 0
-                ))
+            combine(
+                combine(dao.getAllDailyAnalyticsFlow(), dao.getCategoryDayCountsFlow(), dao.getAppSettings(), dao.getFinishedSessionDatesFlow(), DayBoundaryManager.currentTargetDate) { rows, cats, settings, sessions, today ->
+                    BadgeInput(
+                        days = rows.map { BadgeDay(it.dateKey, it.routineCompletionPct, it.isDietCompleted, it.totalWaterMl) },
+                        categoryDays = cats.map { CategoryDay(it.dateKey, it.category, it.done, it.total) },
+                        waterGoalMl = settings?.defaultWaterMl ?: 0,
+                        bestStreak = StreakRule.compute(rows.filter { it.dateKey <= today }.map { StreakDay(it.dateKey, DayCompletion.qualifies(it.routineCompletionPct), it.isVacation) }, today).best,
+                        finishedWorkouts = sessions.size,
+                        gymBestWeeks = WeeklyGymStreak.compute(sessions, settings?.weeklyGymTarget ?: 3, today).bestWeeks,
+                        vacationDates = rows.filter { it.isVacation }.map { it.dateKey }.toSet()
+                    )
+                },
+                dao.getTickedItemCountFlow(), dao.getFocusDaysFlow()
+            ) { base, ticks, focus ->
+                BadgeRules.evaluate(base.copy(tickedItems = ticks, focusDays = focus.map { FocusDay(it.dateKey, it.maxMinutes) }))
             }.collect { onBadgesEvaluated(it) }
         }
         viewModelScope.launch {
@@ -1912,3 +1935,6 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 }
+
+// Bump when medals are added: the first run after a bump records what is already earned without popups
+private const val BADGE_CATALOGUE_VERSION = 2

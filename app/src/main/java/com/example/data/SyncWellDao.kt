@@ -319,6 +319,13 @@ interface SyncWellDao {
     @Query("SELECT r.date AS dateKey, COALESCE(SUM(i.isDone), 0) AS done, COUNT(i.id) AS total FROM daily_routines r JOIN daily_routine_items i ON i.dailyRoutineId = r.id WHERE r.date BETWEEN :from AND :to GROUP BY r.date")
     fun getDayCountsBetween(from: String, to: String): Flow<List<DayCount>>
 
+    // Medals: any tick ever, and the longest focus session of each day
+    @Query("SELECT COUNT(*) FROM daily_routine_items WHERE isDone = 1")
+    fun getTickedItemCountFlow(): Flow<Int>
+
+    @Query("SELECT dateKey AS dateKey, COALESCE(MAX(durationMin), 0) AS maxMinutes FROM tracker_sessions WHERE activityType IN ('STUDY', 'WORK') AND isDeleted = 0 GROUP BY dateKey")
+    fun getFocusDaysFlow(): Flow<List<FocusDayRow>>
+
     // Per category and day over all history, for badges
     @Query("SELECT r.date AS dateKey, i.category AS category, COALESCE(SUM(i.isDone), 0) AS done, COUNT(i.id) AS total FROM daily_routines r JOIN daily_routine_items i ON i.dailyRoutineId = r.id GROUP BY r.date, i.category")
     fun getCategoryDayCountsFlow(): Flow<List<CategoryDayCount>>

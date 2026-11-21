@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Todo
+import com.example.domain.BadgeRules
+import com.example.domain.BadgeState
 import com.example.domain.CategoryProgress
 import com.example.domain.DayCompletion
 import com.example.domain.DayItem
@@ -164,6 +166,19 @@ private fun WeekBarRow(marks: List<WeekMark>) {
         Row(Modifier.fillMaxWidth()) {
             "MTWTFSS".forEach { Text(it.toString(), color = TextMuted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) }
         }
+    }
+}
+
+/** "Next stamp: 12 / 25 good days" with a mint progress bar: always shows how close the next reward is. */
+@Composable
+fun NextStampLine(next: BadgeState?) {
+    if (next == null) return
+    Column(Modifier.fillMaxWidth().testTag("next_stamp"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Next stamp: ${BadgeRules.progressLine(next)}", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        LinearProgressIndicator(
+            progress = { next.fraction }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+            color = Progress, trackColor = Surface3
+        )
     }
 }
 
