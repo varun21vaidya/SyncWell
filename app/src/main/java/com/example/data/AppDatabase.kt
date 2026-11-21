@@ -34,7 +34,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SyncQueueItem::class,
         ExerciseCustomNote::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -83,6 +83,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE daily_routine_items ADD COLUMN templateItemId TEXT")
+                db.execSQL("ALTER TABLE vacation_days ADD COLUMN kind TEXT NOT NULL DEFAULT 'VACATION'")
+                // best effort: link existing days to the template item with the same title and category, so habit streaks have history
+                db.execSQL("UPDATE daily_routine_items SET templateItemId = (SELECT t.id FROM routine_template_items t WHERE t.title = daily_routine_items.title AND t.category = daily_routine_items.category ORDER BY t.id LIMIT 1)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -90,7 +99,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "syncwell_db"
                 )
-                    .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .build()
                 INSTANCE = instance
                 instance

@@ -110,4 +110,23 @@ class BackupRoundTripTest {
         assertEquals(null, dao.getAllTodos().single().weeklyTarget)
         assertTrue(dao.getAllGoalCompletions().isEmpty())
     }
+
+    @Test fun templateLinkAndFreezeKindRoundTripAndOlderBackupsDefault() = runBlocking {
+        val now = "2026-11-07T10:00:00Z"
+        dao.insertDailyRoutine(DailyRoutine("d1", "2026-11-07", null, 0.0))
+        dao.insertDailyRoutineItems(listOf(DailyRoutineItem("i1", "d1", "Sunscreen", "SKINCARE", 1, "08:00", templateItemId = "ti1")))
+        dao.insertVacationDays(listOf(VacationDay("f1", "2026-11-09", false, now, "FREEZE")))
+        val (json, _) = CloudBackupService.buildBackup(dao)
+        db.clearAllTables()
+        CloudBackupService.restoreFromJson(dao, json)
+        assertEquals("ti1", dao.getAllDailyRoutineItems().single().templateItemId)
+        assertEquals("FREEZE", dao.getAllVacationDays().single().kind)
+
+        db.clearAllTables()
+        CloudBackupService.restoreFromJson(dao, """{"vacationDays":[{"id":"v","date":"2026-11-02","createdAt":"x"}],
+            "dailyRoutines":[{"id":"d","date":"2026-11-02","completionPct":0.0}],
+            "dailyRoutineItems":[{"id":"i","dailyRoutineId":"d","title":"Old","category":"OTHER","orderIndex":1}]}""")
+        assertEquals("VACATION", dao.getAllVacationDays().single().kind)
+        assertEquals(null, dao.getAllDailyRoutineItems().single().templateItemId)
+    }
 }

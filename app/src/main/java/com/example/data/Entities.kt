@@ -57,7 +57,8 @@ data class VacationDay(
     @PrimaryKey val id: String,
     val date: String, // YYYY-MM-DD
     val isDeleted: Boolean = false,
-    val createdAt: String
+    val createdAt: String,
+    val kind: String = "VACATION" // VACATION or FREEZE (one protected day, once a week)
 )
 
 @Entity(tableName = "routine_templates")
@@ -126,7 +127,8 @@ data class DailyRoutineItem(
     val orderIndex: Int,
     val scheduledTime: String?,
     val isDone: Boolean = false,
-    val proteinAnswer: String? = null // DIET items only: YES / NO, null until answered
+    val proteinAnswer: String? = null, // DIET items only: YES / NO, null until answered
+    val templateItemId: String? = null // the template item this came from; survives a rebuild and a title edit
 )
 
 @Entity(tableName = "workout_templates")
@@ -328,6 +330,7 @@ data class Todo(
 
 /** Query results, not tables. */
 data class DayCount(val dateKey: String, val done: Int, val total: Int)
+data class HabitDayRow(val dateKey: String, val templateItemId: String, val done: Boolean)
 data class CategoryDayCount(val dateKey: String, val category: String, val done: Int, val total: Int)
 
 /** One row each time a goal was completed (kept after the goal resets). One per goal per day. */

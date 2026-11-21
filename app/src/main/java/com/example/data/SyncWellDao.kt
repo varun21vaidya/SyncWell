@@ -43,6 +43,13 @@ interface SyncWellDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVacationDay(day: VacationDay)
 
+    // Habit streaks: every routine item that came from a template item, and which days had a routine at all
+    @Query("SELECT r.date AS dateKey, i.templateItemId AS templateItemId, i.isDone AS done FROM daily_routine_items i JOIN daily_routines r ON r.id = i.dailyRoutineId WHERE i.templateItemId IS NOT NULL")
+    fun getHabitDaysFlow(): Flow<List<HabitDayRow>>
+
+    @Query("SELECT date FROM daily_routines")
+    fun getRoutineDatesFlow(): Flow<List<String>>
+
     // Routine Templates
     @Query("SELECT * FROM routine_templates")
     suspend fun getRoutineTemplates(): List<RoutineTemplate>

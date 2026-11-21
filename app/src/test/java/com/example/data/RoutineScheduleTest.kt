@@ -72,4 +72,12 @@ class RoutineScheduleTest {
         val (templates, _) = DatabaseSeeder.buildStarterTemplates(SetupAnswers(workoutDays = emptyList()))
         assertTrue(templates.none { it.name == "Workout Days" })
     }
+
+    @Test fun dayItemsKeepTheirTemplateLinkAndATitleEditKeepsTheTick() {
+        val items = listOf(RoutineTemplateItem("t-sun", "d", "Sunscreen (SPF 50)", "SKINCARE", 1, "08:00"))
+        // the title was "Sunscreen" when it was ticked, so only the template id can match it
+        val out = RoutineSchedule.buildDayItems("r", items, doneTitles = emptySet(), doneTemplateIds = setOf("t-sun"))
+        assertEquals("t-sun", out.single().templateItemId)
+        assertTrue(out.single().isDone)
+    }
 }

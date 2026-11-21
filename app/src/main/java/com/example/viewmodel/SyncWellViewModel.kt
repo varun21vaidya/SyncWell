@@ -14,6 +14,7 @@ import com.example.service.DriveConsentRequiredException
 import com.example.service.DayBoundaryManager
 import com.example.service.GoalService
 import com.example.service.ReminderScheduler
+import com.example.service.TodayWidget
 import com.example.service.HealthConnectService
 import com.example.service.ProgressiveOverloadEngine
 import com.example.service.SupplementValidator
@@ -220,6 +221,44 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         reviewDismissedWeek.value = week
     }
 
+    // Habit streaks per template item (for example sunscreen, minoxidil)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val habitStreaks: StateFlow<Map<String, Int>> = combine(
+        dao.getHabitDaysFlow(), dao.getRoutineDatesFlow(), dao.getActiveVacationDays(), DayBoundaryManager.currentTargetDate
+    ) { rows, routineDates, vacations, today ->
+        HabitStreaks.current(rows.map { HabitDay(it.dateKey, it.templateItemId, it.done) }, routineDates.toSet(), vacations.map { it.date }.toSet(), today)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // Streak freeze: one protected day per week, for today only
+    val freezeState: StateFlow<FreezeState> = combine(dao.getActiveVacationDays(), DayBoundaryManager.currentTargetDate) { rows, today ->
+        val freezes = rows.filter { it.kind == "FREEZE" }.map { it.date }
+        FreezeState(frozenToday = today in freezes, canFreeze = FreezeRule.canFreeze(today, freezes))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FreezeState())
+
+    data class FreezeState(val frozenToday: Boolean = false, val canFreeze: Boolean = true)
+
+    fun useFreezeToday() {
+        val today = DayBoundaryManager.currentTargetDate.value
+        viewModelScope.launch {
+            val freezes = dao.getAllVacationDays().filter { it.kind == "FREEZE" }.map { it.date }
+            if (!FreezeRule.canFreeze(today, freezes)) return@launch
+            val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+            dao.insertVacationDay(VacationDay(UUID.randomUUID().toString(), today, false, iso, "FREEZE"))
+            AnalyticsComputationService.recalculateDayCache(dao, today)
+        }
+    }
+
+    /** Undo today's freeze, which makes the week's freeze available again. */
+    fun cancelFreezeToday() {
+        val today = DayBoundaryManager.currentTargetDate.value
+        viewModelScope.launch {
+            dao.getAllVacationDays().firstOrNull { it.date == today && it.kind == "FREEZE" }?.let {
+                dao.insertVacationDay(it.copy(isDeleted = true))
+                AnalyticsComputationService.recalculateDayCache(dao, today)
+            }
+        }
+    }
+
     // Level from every qualifying day (80% or more) in the history
     val level: StateFlow<LevelResult> = dao.countQualifyingDays().map { LevelRule.of(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LevelRule.of(0))
@@ -367,7 +406,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         todayDataJob?.cancel()
         todayDataJob = viewModelScope.launch {
             // Check Vacation state
-            val isVac = dao.getVacationDayByDate(dateKey) != null
+            val isVac = dao.getVacationDayByDate(dateKey)?.kind == "VACATION"
             _isVacationActive.value = isVac
 
             // Check if Daily Routine checklist row exists. If not, generate from today's dayType template!
@@ -375,6 +414,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
             // Warm up and pre-compute cached daily statistics for Home screen visibility
             AnalyticsComputationService.recalculateDayCache(dao, dateKey)
+            TodayWidget.refresh(getApplication())
 
             // Dynamic reactive sub-flows matching dateKey under the cancelled job
             launch {
@@ -416,13 +456,14 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         dateKey: String,
         isVac: Boolean,
         doneTitles: Set<String> = emptySet(),
-        proteinAnswers: Map<String, String?> = emptyMap()
+        proteinAnswers: Map<String, String?> = emptyMap(),
+        doneTemplateIds: Set<String> = emptySet()
     ) {
         val matching = RoutineSchedule.templatesForDate(dao.getRoutineTemplates(), dateKey)
         val routineId = UUID.randomUUID().toString()
         dao.insertDailyRoutine(DailyRoutine(routineId, dateKey, matching.firstOrNull()?.id, 0.0, isVac))
         val templateItems = matching.flatMap { dao.getRoutineTemplateItems(it.id) }
-        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles, dao.getAppSettingsDirectly()?.wakeTime ?: "00:00", proteinAnswers)
+        val items = RoutineSchedule.buildDayItems(routineId, templateItems, doneTitles, dao.getAppSettingsDirectly()?.wakeTime ?: "00:00", proteinAnswers, doneTemplateIds)
         if (items.isNotEmpty()) dao.insertDailyRoutineItems(items)
     }
 
@@ -435,7 +476,13 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             } ?: emptyList()
             dao.clearDailyRoutineItemsForDate(dateKey)
             dao.clearDailyRoutineForDate(dateKey)
-            generateRoutine(dateKey, _isVacationActive.value, done.map { it.title }.toSet(), done.associate { it.title to it.proteinAnswer })
+            val legacy = done.filter { it.templateItemId == null } // rows from before items were linked still match by title
+            generateRoutine(
+                dateKey, _isVacationActive.value,
+                doneTitles = legacy.map { it.title }.toSet(),
+                proteinAnswers = done.associate { (it.templateItemId ?: it.title) to it.proteinAnswer },
+                doneTemplateIds = done.mapNotNull { it.templateItemId }.toSet()
+            )
             loadTodayData(dateKey)
         }
     }
@@ -516,6 +563,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
             // Writes the day's percent and the statistics cache
             AnalyticsComputationService.recalculateDayCache(dao, dateKey).onFailure { _message.tryEmit("Could not update stats") }
+            TodayWidget.refresh(getApplication())
         }
     }
 

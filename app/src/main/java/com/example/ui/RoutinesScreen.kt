@@ -67,6 +67,7 @@ fun getRoutineDetailedGuide(item: DailyRoutineItem): RoutineDetailedInfo {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutinesScreen(viewModel: SyncWellViewModel) {
+    val habitStreaks by viewModel.habitStreaks.collectAsState()
     val activeRoutineItems by viewModel.activeRoutineItems.collectAsState()
     val isVacationActive by viewModel.isVacationActive.collectAsState()
 
@@ -235,6 +236,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                             val item = byId.getValue(di.id)
                             RoutineItemRow(
                                 item = item,
+                                habitStreak = item.templateItemId?.let { habitStreaks[it] } ?: 0,
                                 onCardClick = { selectedRoutineItem = item },
                                 onCheckedChange = { viewModel.toggleRoutineItem(item) },
                                 viewModel = viewModel,
@@ -358,7 +360,8 @@ fun RoutineItemRow(
     onCardClick: () -> Unit,
     onCheckedChange: () -> Unit,
     viewModel: SyncWellViewModel,
-    onLogSupplementWithWarning: (String) -> Unit
+    onLogSupplementWithWarning: (String) -> Unit,
+    habitStreak: Int = 0
 ) {
     Card(
         modifier = Modifier
@@ -438,6 +441,10 @@ fun RoutineItemRow(
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+                            }
+                            if (habitStreak >= 2) {
+                                Text("$habitStreak-day habit streak", color = AmberFlame, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.testTag("habit_streak_${item.orderIndex}"))
                             }
                         }
                     }

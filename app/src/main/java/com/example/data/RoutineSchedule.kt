@@ -33,10 +33,11 @@ object RoutineSchedule {
         items: List<RoutineTemplateItem>,
         doneTitles: Set<String> = emptySet(),
         wakeTime: String = "00:00",
-        proteinAnswers: Map<String, String?> = emptyMap()
+        proteinAnswers: Map<String, String?> = emptyMap(),
+        doneTemplateIds: Set<String> = emptySet() // matched by template item first, so a title edit keeps a tick
     ): List<DailyRoutineItem> =
         items.sortedWith(compareBy({ t -> t.scheduledTime?.let { (minutes(it) - minutes(wakeTime) + 1440) % 1440 } ?: Int.MAX_VALUE }, { it.orderIndex }))
             .mapIndexed { i, t ->
-                DailyRoutineItem(UUID.randomUUID().toString(), routineId, t.title, t.category, i + 1, t.scheduledTime, t.title in doneTitles, proteinAnswers[t.title])
+                DailyRoutineItem(UUID.randomUUID().toString(), routineId, t.title, t.category, i + 1, t.scheduledTime, (t.id in doneTemplateIds || t.title in doneTitles), proteinAnswers[t.id] ?: proteinAnswers[t.title], t.id)
             }
 }

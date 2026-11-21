@@ -334,6 +334,33 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        // Streak freeze: one protected day a week, for today only, never retroactive
+        val freeze by viewModel.freezeState.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("STREAK FREEZE", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(
+                    "One protected day a week. If today is a day you cannot do your routine, freeze it and your streak simply pauses, like vacation but for a single day. It only applies to today and never changes past days.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
+                )
+                when {
+                    freeze.frozenToday -> OutlinedButton(onClick = { viewModel.cancelFreezeToday() }, modifier = Modifier.testTag("cancel_freeze_btn")) {
+                        Text("TODAY IS FROZEN · UNDO", color = EmeraldGlow, fontWeight = FontWeight.Black)
+                    }
+                    freeze.canFreeze -> Button(onClick = { viewModel.useFreezeToday() }, modifier = Modifier.testTag("use_freeze_btn"),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow)) {
+                        Text("FREEZE TODAY", color = OledBlack, fontWeight = FontWeight.Black)
+                    }
+                    else -> Text("This week's freeze is already used.", color = Slate400, fontSize = 12.sp)
+                }
+            }
+        }
+
         // Gentle reminders: off until switched on; the notification permission is asked for here
         val remindersEnabled by viewModel.remindersEnabled.collectAsState()
         Card(

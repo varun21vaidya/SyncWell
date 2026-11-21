@@ -163,7 +163,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
         val goalWeekCounts by viewModel.goalWeekCounts.collectAsState()
         statsData.comparison?.let { cmp ->
             if (showReview) WeeklyReviewCard(cmp, goalWeekCounts.values.sum(), onDismiss = { viewModel.dismissWeeklyReview() })
-            WeekComparisonCard(cmp)
+            WeekComparisonCard(cmp, streaks.routine.current)
         }
         HeatmapCard(statsData.days, today = DayBoundaryManager.currentTargetDate.collectAsState().value)
         AchievementsCard(earnedBadges)

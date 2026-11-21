@@ -272,6 +272,7 @@ object CloudBackupService {
                 putOpt("scheduledTime", ri.scheduledTime)
                 put("isDone", ri.isDone)
                 putOpt("proteinAnswer", ri.proteinAnswer)
+                putOpt("templateItemId", ri.templateItemId)
             })
         }
         root.put("dailyRoutineItems", driArr)
@@ -301,6 +302,7 @@ object CloudBackupService {
                 put("id", vd.id)
                 put("date", vd.date)
                 put("isDeleted", vd.isDeleted)
+                put("kind", vd.kind)
                 put("createdAt", vd.createdAt)
             })
         }
@@ -779,7 +781,8 @@ object CloudBackupService {
                     isDone = isDone,
                     // An older backup has no answer; a ticked meal then counted as protein met
                     proteinAnswer = if (obj.has("proteinAnswer") && !obj.isNull("proteinAnswer")) obj.getString("proteinAnswer")
-                        else if (isDone && category == "DIET") "YES" else null
+                        else if (isDone && category == "DIET") "YES" else null,
+                    templateItemId = if (obj.has("templateItemId") && !obj.isNull("templateItemId")) obj.getString("templateItemId") else null
                 ))
             }
             if (list.isNotEmpty()) dao.insertDailyRoutineItems(list)
@@ -813,7 +816,8 @@ object CloudBackupService {
                     id = obj.getString("id"),
                     date = obj.getString("date"),
                     isDeleted = obj.optBoolean("isDeleted", false),
-                    createdAt = obj.getString("createdAt")
+                    createdAt = obj.getString("createdAt"),
+                    kind = obj.optString("kind", "VACATION")
                 ))
             }
             if (list.isNotEmpty()) dao.insertVacationDays(list)

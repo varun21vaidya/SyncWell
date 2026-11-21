@@ -60,4 +60,22 @@ class MigrationTest {
             it.moveToFirst(); assertEquals("t1", it.getString(0)); assertEquals("2026-11-18", it.getString(1))
         }
     }
+
+    @Test fun migrate10To11LinksExistingItemsAndKeepsVacationDays() {
+        helper.createDatabase(dbName, 10).apply {
+            execSQL("INSERT INTO routine_templates (id, name, dayType, isActive, repeatType, daysOfWeek, onceDate, isStarter) VALUES ('tpl', 'Daily', '', 1, 'DAILY', '[1]', NULL, 0)")
+            execSQL("INSERT INTO routine_template_items (id, templateId, title, category, orderIndex, scheduledTime, isRequired) VALUES ('ti1', 'tpl', 'Sunscreen', 'SKINCARE', 1, '08:00', 1)")
+            execSQL("INSERT INTO daily_routines (id, date, templateId, completionPct, isVacation) VALUES ('d1', '2026-11-07', 'tpl', 1.0, 0)")
+            execSQL("INSERT INTO daily_routine_items (id, dailyRoutineId, title, category, orderIndex, scheduledTime, isDone, proteinAnswer) VALUES ('a', 'd1', 'Sunscreen', 'SKINCARE', 1, '08:00', 1, NULL)")
+            execSQL("INSERT INTO daily_routine_items (id, dailyRoutineId, title, category, orderIndex, scheduledTime, isDone, proteinAnswer) VALUES ('b', 'd1', 'Custom one-off', 'OTHER', 2, NULL, 0, NULL)")
+            execSQL("INSERT INTO vacation_days (id, date, isDeleted, createdAt) VALUES ('v1', '2026-11-05', 0, 'x')")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 11, true, AppDatabase.MIGRATION_10_11)
+        db.query("SELECT id, templateItemId FROM daily_routine_items ORDER BY id").use {
+            assertTrue(it.moveToFirst()); assertEquals("ti1", it.getString(1)) // linked by title and category
+            assertTrue(it.moveToNext()); assertTrue(it.isNull(1)) // no template item to link to
+        }
+        db.query("SELECT kind FROM vacation_days").use { it.moveToFirst(); assertEquals("VACATION", it.getString(0)) }
+    }
 }

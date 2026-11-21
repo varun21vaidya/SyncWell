@@ -72,4 +72,13 @@ class AnalyticsComputationServiceTest {
         listOf("2026-11-09", "2026-11-10").forEach { dao.insertWorkoutSession(WorkoutSession("w$it", it, "PUSH", "GYM", "${it}T10:00:00Z", "${it}T11:00:00Z")) }
         assertEquals(1, AnalyticsComputationService.recalculateDayCache(dao, "2026-11-17").getOrThrow().gymStreakValue)
     }
+
+    @Test fun aFrozenDayPausesTheStreakInsteadOfBreakingIt() = runBlocking {
+        day("2026-11-06", 5, 5); AnalyticsComputationService.recalculateDayCache(dao, "2026-11-06")
+        dao.insertVacationDay(VacationDay("f", "2026-11-07", false, "x", "FREEZE")) // frozen, nothing ticked
+        day("2026-11-08", 5, 5)
+        assertEquals(2, AnalyticsComputationService.recalculateDayCache(dao, "2026-11-08").getOrThrow().streakValue)
+        dao.insertVacationDay(VacationDay("f", "2026-11-07", true, "x", "FREEZE")) // undone: the missed day now breaks it
+        assertEquals(1, AnalyticsComputationService.recalculateDayCache(dao, "2026-11-08").getOrThrow().streakValue)
+    }
 }

@@ -36,7 +36,7 @@ private fun StatsCard(title: String, modifier: Modifier = Modifier, content: @Co
 }
 
 @Composable
-fun WeekComparisonCard(c: WeekComparison) {
+fun WeekComparisonCard(c: WeekComparison, streak: Int = 0) {
     StatsCard("THIS WEEK VS LAST WEEK", Modifier.testTag("week_comparison_card")) {
         val note = when {
             c.deltaPoints > 0 -> "Up ${c.deltaPoints} points on the same days last week"
@@ -50,6 +50,10 @@ fun WeekComparisonCard(c: WeekComparison) {
             WeekColumn("Last week", c.lastWeek)
         }
         Text("Compared over the first ${c.daysCompared} day${if (c.daysCompared == 1) "" else "s"} of each week.", color = Slate400, fontSize = 10.sp)
+        val context = androidx.compose.ui.platform.LocalContext.current
+        TextButton(onClick = { ShareCard.share(context, c, streak) }, modifier = Modifier.testTag("share_week")) {
+            Text("SHARE MY WEEK", color = EmeraldGlow, fontWeight = FontWeight.Black)
+        }
     }
 }
 
