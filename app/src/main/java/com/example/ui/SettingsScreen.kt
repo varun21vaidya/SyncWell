@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.domain.LinkEvent
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 
@@ -329,6 +330,39 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                         ),
                         modifier = Modifier.testTag("vacation_mode_switch")
                     )
+                }
+            }
+        }
+
+        // Ask-first prompts: the only opt-out for "tick it?" questions
+        val linkEnabled by viewModel.linkEnabled.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("ASK TO TICK MY ROUTINE", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(
+                    "After these events SyncWell asks once whether to tick the matching routine item. It never ticks anything on its own.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
+                )
+                listOf(
+                    LinkEvent.WORKOUT to "Finished workout",
+                    LinkEvent.FOCUS to "Saved focus block",
+                    LinkEvent.WATER to "Water goal reached",
+                    LinkEvent.SUPPLEMENT to "Supplement logged"
+                ).forEach { (event, label) ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(label, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        Switch(
+                            checked = event in linkEnabled,
+                            onCheckedChange = { viewModel.setLinkEnabled(event, it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = EmeraldGlow, checkedTrackColor = EmeraldDim),
+                            modifier = Modifier.testTag("link_switch_${event.name}")
+                        )
+                    }
                 }
             }
         }

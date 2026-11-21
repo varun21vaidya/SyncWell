@@ -39,6 +39,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.domain.LinkEvent
 import com.example.ui.AnalyticsScreen
 import com.example.ui.HomeScreen
 import com.example.ui.OnboardingScreen
@@ -97,6 +98,7 @@ class MainActivity : ComponentActivity() {
             val theme by viewModel.theme.collectAsState()
             val appLaunchState by viewModel.appLaunchState.collectAsState()
             val activeModal by viewModel.activeModal.collectAsState()
+            val linkPrompt by viewModel.linkPrompt.collectAsState()
 
             MyApplicationTheme(darkTheme = true) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -116,6 +118,34 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                    }
+
+                    linkPrompt?.let { p ->
+                        AlertDialog(
+                            onDismissRequest = { viewModel.answerLinkPrompt(false) },
+                            title = {
+                                Text(
+                                    when (p.event) {
+                                        LinkEvent.WORKOUT -> "Workout finished"
+                                        LinkEvent.FOCUS -> "Focus block saved"
+                                        LinkEvent.WATER -> "Water goal reached"
+                                        LinkEvent.SUPPLEMENT -> "Supplement logged"
+                                    },
+                                    fontWeight = FontWeight.Black
+                                )
+                            },
+                            text = { Text("Tick \"${p.item.title}\" in today's routine?") },
+                            confirmButton = {
+                                TextButton(onClick = { viewModel.answerLinkPrompt(true) }) {
+                                    Text("YES, TICK IT", color = Emerald600, fontWeight = FontWeight.Black)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { viewModel.answerLinkPrompt(false) }) { Text("NOT NOW", color = Slate400) }
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                        )
                     }
 
                     if (activeModal == "DRIVE_CONSENT_INFO") {

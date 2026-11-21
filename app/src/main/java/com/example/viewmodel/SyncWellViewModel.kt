@@ -375,6 +375,45 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // ASK-FIRST PROMPTS: a tracker event may offer to tick a routine item; only a Yes ticks it, through the normal tick path
+    data class LinkPrompt(val event: LinkEvent, val item: DailyRoutineItem, val dateKey: String)
+
+    private val _linkEnabled = MutableStateFlow(LinkEvent.values().filter { prefs.getBoolean("link_${it.name}", true) }.toSet())
+    val linkEnabled: StateFlow<Set<LinkEvent>> = _linkEnabled.asStateFlow()
+
+    fun setLinkEnabled(event: LinkEvent, on: Boolean) {
+        prefs.edit().putBoolean("link_${event.name}", on).apply()
+        _linkEnabled.value = if (on) _linkEnabled.value + event else _linkEnabled.value - event
+    }
+
+    private val linkQueue = MutableStateFlow<List<LinkPrompt>>(emptyList())
+    val linkPrompt: StateFlow<LinkPrompt?> = linkQueue.map { it.firstOrNull() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun promptedToday(dateKey: String): Set<String> =
+        if (prefs.getString("prompt_date", null) == dateKey) prefs.getStringSet("prompt_ids", null) ?: emptySet() else emptySet()
+
+    private suspend fun offerLink(event: LinkEvent, supplementName: String? = null) {
+        if (event !in _linkEnabled.value) return
+        val dateKey = DayBoundaryManager.currentTargetDate.value
+        val routine = dao.getDailyRoutineDirectly(dateKey) ?: return
+        val items = dao.getDailyRoutineItems(routine.id)
+        val shown = promptedToday(dateKey)
+        val match = LinkMatchRule.match(event, items.map { LinkItem(it.id, it.title, it.category, it.isDone) }, shown, supplementName) ?: return
+        prefs.edit().putString("prompt_date", dateKey).putStringSet("prompt_ids", shown + match.id).apply() // once per item per day, answered or not
+        linkQueue.value = linkQueue.value + LinkPrompt(event, items.first { it.id == match.id }, dateKey)
+    }
+
+    fun answerLinkPrompt(yes: Boolean) {
+        val p = linkQueue.value.firstOrNull() ?: return
+        linkQueue.value = linkQueue.value.drop(1)
+        if (!yes) return
+        viewModelScope.launch {
+            val fresh = dao.getDailyRoutineItems(p.item.dailyRoutineId).firstOrNull { it.id == p.item.id } ?: return@launch
+            if (!fresh.isDone) executeRoutineToggle(fresh, dateKey = p.dateKey) // same path as a manual tick
+        }
+    }
+
     // Toggle Routine item Checkbox
     fun toggleRoutineItem(item: DailyRoutineItem) {
         val isProteinRelated = !item.isDone && item.category == "DIET"
@@ -396,8 +435,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _proteinConfirmationTask.value = null
     }
 
-    private fun executeRoutineToggle(item: DailyRoutineItem, proteinAnswer: String? = null) {
-        val dateKey = DayBoundaryManager.currentTargetDate.value // read at tap time, so a tick at midnight lands on the day it was made
+    private fun executeRoutineToggle(
+        item: DailyRoutineItem,
+        proteinAnswer: String? = null,
+        dateKey: String = DayBoundaryManager.currentTargetDate.value // read at tap time, so a tick at midnight lands on the day it was made
+    ) {
         viewModelScope.launch {
             // Unticking clears the answer, so the next tick asks again
             val updated = item.copy(isDone = !item.isDone, proteinAnswer = if (item.isDone) null else proteinAnswer)
@@ -785,6 +827,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
             // Dynamic recalculation of cached statistics
             AnalyticsComputationService.recalculateDayCache(dao, todayKey)
+            if (type == "STUDY" || type == "WORK") offerLink(LinkEvent.FOCUS)
         }
     }
 
@@ -1196,6 +1239,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             _workoutSetLogs.value = emptyMap()
             clearActiveSessionFromPrefs() // FIX 6
             AnalyticsComputationService.recalculateDayCache(dao, session.date)
+            offerLink(LinkEvent.WORKOUT)
         }
     }
 
@@ -1464,6 +1508,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val todayKey = DayBoundaryManager.currentTargetDate.value
         val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
         viewModelScope.launch {
+            val before = dao.getWaterLogs(todayKey).first().sumOf { it.amountMl }
             val entry = WaterLog(
                 id = UUID.randomUUID().toString(),
                 amountMl = amountMl,
@@ -1473,6 +1518,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             )
             dao.insertWaterLog(entry)
             AnalyticsComputationService.recalculateDayCache(dao, todayKey)
+            val goal = _waterGoalMl.value
+            if (before < goal && before + amountMl >= goal) offerLink(LinkEvent.WATER) // only the log that reaches the goal
         }
     }
 
@@ -1583,6 +1630,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 dateKey = todayKey
             )
             dao.insertSupplementLog(entry)
+            offerLink(LinkEvent.SUPPLEMENT, name)
 
             if (lateWarning) {
                 onLateWarning()
