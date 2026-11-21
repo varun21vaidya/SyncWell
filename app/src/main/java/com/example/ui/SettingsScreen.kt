@@ -361,6 +361,39 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        // Rest timer: off by default; when on it appears under the workout header after each logged set
+        val workoutSettings by viewModel.workoutSettings.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("WORKOUT REST TIMER", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Rest timer", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Switch(
+                        checked = workoutSettings?.restTimerEnabled == true,
+                        onCheckedChange = { viewModel.setRestTimerEnabled(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = EmeraldGlow, checkedTrackColor = EmeraldDim),
+                        modifier = Modifier.testTag("rest_timer_switch")
+                    )
+                }
+                if (workoutSettings?.restTimerEnabled == true) {
+                    val secs = workoutSettings?.restSeconds ?: 90
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Rest length", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 13.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { viewModel.setRestSeconds(secs - 15) }, modifier = Modifier.size(48.dp)) { Text("−", fontSize = 22.sp) }
+                            Text("${secs / 60}:${"%02d".format(secs % 60)}", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                            IconButton(onClick = { viewModel.setRestSeconds(secs + 15) }, modifier = Modifier.size(48.dp)) { Text("+", fontSize = 22.sp) }
+                        }
+                    }
+                }
+            }
+        }
+
         // Gentle reminders: off until switched on; the notification permission is asked for here
         val remindersEnabled by viewModel.remindersEnabled.collectAsState()
         Card(

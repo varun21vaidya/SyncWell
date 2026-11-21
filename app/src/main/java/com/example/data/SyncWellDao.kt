@@ -194,6 +194,44 @@ interface SyncWellDao {
     """)
     suspend fun getLastCompletedSetLogForExercise(exerciseId: String): WorkoutSetLog?
 
+    // Workout screen: history, "previous" column and personal bests. Only finished, kept sessions count.
+    @Query("SELECT * FROM workout_sessions WHERE isDeleted = 0 AND endedAt IS NOT NULL ORDER BY date DESC, startedAt DESC")
+    fun getFinishedSessionsFlow(): Flow<List<WorkoutSession>>
+
+    @Query("""
+        SELECT sess.id AS sessionId, sess.date AS date, sess.startedAt AS startedAt, e.exerciseId AS exerciseId, s.weightKg AS weightKg, s.reps AS reps
+        FROM workout_set_logs s
+        JOIN workout_session_exercises e ON s.sessionExerciseId = e.id
+        JOIN workout_sessions sess ON e.sessionId = sess.id
+        WHERE s.isCompleted = 1 AND sess.isDeleted = 0 AND sess.endedAt IS NOT NULL
+    """)
+    fun getFinishedSetRowsFlow(): Flow<List<FinishedSetRow>>
+
+    @Query("""
+        SELECT s.* FROM workout_set_logs s
+        JOIN workout_session_exercises e ON s.sessionExerciseId = e.id
+        JOIN workout_sessions sess ON e.sessionId = sess.id
+        WHERE e.exerciseId = :exerciseId AND s.isCompleted = 1 AND sess.isDeleted = 0 AND sess.endedAt IS NOT NULL AND sess.id != :excludeSessionId
+        ORDER BY s.weightKg DESC, s.reps DESC LIMIT 1
+    """)
+    suspend fun getBestFinishedSetForExercise(exerciseId: String, excludeSessionId: String): WorkoutSetLog?
+
+    @Query("""
+        SELECT s.* FROM workout_set_logs s
+        JOIN workout_session_exercises e ON s.sessionExerciseId = e.id
+        JOIN workout_sessions sess ON e.sessionId = sess.id
+        WHERE e.exerciseId = :exerciseId AND s.isCompleted = 1 AND sess.isDeleted = 0 AND sess.endedAt IS NOT NULL AND sess.id != :excludeSessionId
+        AND sess.id = (
+            SELECT x.id FROM workout_sessions x
+            JOIN workout_session_exercises xe ON xe.sessionId = x.id
+            JOIN workout_set_logs xs ON xs.sessionExerciseId = xe.id
+            WHERE xe.exerciseId = :exerciseId AND xs.isCompleted = 1 AND x.isDeleted = 0 AND x.endedAt IS NOT NULL AND x.id != :excludeSessionId
+            ORDER BY x.date DESC, x.startedAt DESC LIMIT 1
+        )
+        ORDER BY s.setIndex ASC
+    """)
+    suspend fun getPreviousSessionSetsForExercise(exerciseId: String, excludeSessionId: String): List<WorkoutSetLog>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWorkoutSetLogs(logs: List<WorkoutSetLog>)
 

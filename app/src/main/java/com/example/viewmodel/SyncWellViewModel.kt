@@ -115,6 +115,59 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val weightLogs: Flow<List<WeightLog>> = dao.getWeightLogs()
 
+    // WORKOUT SCREEN STATE (Milestone 9): settings, history, start screen, clock, rest timer, summary
+    val workoutSettings: StateFlow<AppSettings?> = dao.getAppSettings()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val finishedSetRows: StateFlow<List<FinishedSetRow>> = dao.getFinishedSetRowsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val workoutHistory: StateFlow<List<WorkoutHistoryItem>> = combine(dao.getFinishedSessionsFlow(), finishedSetRows) { sessions, rows ->
+        val newBests = PersonalBestRule.newBestsBySession(rows.map { HistoricSet(it.sessionId, it.date + "|" + it.startedAt, it.exerciseId, it.weightKg, it.reps) })
+        val bySession = rows.groupBy { it.sessionId }
+        sessions.map { s ->
+            val r = bySession[s.id].orEmpty()
+            WorkoutHistoryItem(
+                session = s, sets = r.size, exercises = r.map { it.exerciseId }.toSet().size, newBests = newBests[s.id] ?: 0,
+                activeSeconds = s.activeSeconds.takeIf { it > 0 } ?: fallbackSeconds(s.startedAt, s.endedAt)
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val workoutStart: StateFlow<WorkoutStartState> = combine(
+        workoutHistory, finishedSetRows, workoutSettings, exerciseLibrary, DayBoundaryManager.currentTargetDate
+    ) { history, rows, settings, library, today ->
+        val next = NextSplitRule.next(history.map { it.session.dayType })
+        val lastOfNext = history.firstOrNull { NextSplitRule.splitOf(it.session.dayType) == next }
+        val lastBest = lastOfNext?.let { item ->
+            rows.filter { it.sessionId == item.session.id }.maxWithOrNull(compareBy({ it.weightKg }, { it.reps }))
+        }?.let { r -> "${library.firstOrNull { it.id == r.exerciseId }?.name ?: "Best set"}  ${formatKg(r.weightKg)} × ${r.reps}" }
+        val weekDates = WeekKey.range(WeekKey.of(today), WeekKey.addDays(WeekKey.of(today), 6))
+        val weekDone = history.map { it.session.date }.filter { it in weekDates }.toSet()
+        WorkoutStartState(
+            next = next, nextLastDate = lastOfNext?.session?.date, nextLastBest = lastBest,
+            lastDone = NextSplitRule.lastDone(history.map { it.session.dayType to it.session.date }),
+            weekDates = weekDates, weekDone = weekDone,
+            thisWeekCount = history.count { it.session.date in weekDates },
+            weeklyTarget = settings?.weeklyGymTarget ?: 3, today = today, recent = history.take(5)
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WorkoutStartState())
+
+    // Active time clock. Persisted with the saved active session, so a pause survives leaving the tab and restarting the app.
+    private val _sessionClock = MutableStateFlow(SessionClock())
+    val sessionClock: StateFlow<SessionClock> = _sessionClock.asStateFlow()
+
+    private val _rest = MutableStateFlow<RestState?>(null)
+    val rest: StateFlow<RestState?> = _rest.asStateFlow()
+    private var restJob: Job? = null
+
+    private val _exerciseHistory = MutableStateFlow<Map<String, ExerciseHistory>>(emptyMap())
+    val exerciseHistory: StateFlow<Map<String, ExerciseHistory>> = _exerciseHistory.asStateFlow()
+
+    private val _workoutSummary = MutableStateFlow<WorkoutSummary?>(null)
+    val workoutSummary: StateFlow<WorkoutSummary?> = _workoutSummary.asStateFlow()
+    private var finishingWorkout = false
+
     // 6. TRACKER STORE (Focus stopwatch clock)
     private val _isActiveTimerRunning = MutableStateFlow(false)
     val isActiveTimerRunning: StateFlow<Boolean> = _isActiveTimerRunning.asStateFlow()
@@ -966,6 +1019,9 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _currentActiveSession.value = session
         _activeSessionExercises.value = emptyList()
         _workoutSetLogs.value = emptyMap()
+        _exerciseHistory.value = emptyMap()
+        skipRest()
+        _sessionClock.value = SessionClock.startedAt(System.currentTimeMillis())
         persistActiveSessionToPrefs() // FIX 6
 
         viewModelScope.launch {
@@ -1032,11 +1088,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 .filter { it.id in orderedIds } // Only keep exercises defined in the split
 
             val sessionExercises = filteredExercises.mapIndexed { idx, ex ->
-                // Fetch previous completed set metrics OR fall back to progression Suggested weights
-                val lastLog = dao.getLastCompletedSetLogForExercise(ex.id)
+                // The next-time target saved when the last workout finished (what its summary showed); else last logged set
                 val suggestedState = dao.getExerciseProgression(ex.id)
-                val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 0.0)
-                val targetReps = lastLog?.reps ?: (suggestedState?.suggestedReps ?: ex.defaultRepsMax)
+                val lastLog = dao.getLastCompletedSetLogForExercise(ex.id)
+                val targetWt = suggestedState?.suggestedWeightKg ?: lastLog?.weightKg ?: 0.0
+                val targetReps = suggestedState?.suggestedReps ?: lastLog?.reps ?: ex.defaultRepsMax
 
                 WorkoutSessionExercise(
                     id = UUID.randomUUID().toString(),
@@ -1067,6 +1123,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 defaultLogs[se.id] = logsList
             }
 
+            loadExerciseHistory(session.id, sessionExercises.map { it.exerciseId })
             _activeSessionExercises.value = sessionExercises
             _workoutSetLogs.value = defaultLogs
             startingWorkout = false
@@ -1081,8 +1138,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             // Fetch previous completed set metrics for progression matching
             val lastLog = dao.getLastCompletedSetLogForExercise(exerciseId)
             val suggestedState = dao.getExerciseProgression(exerciseId)
-            val targetWt = lastLog?.weightKg ?: (suggestedState?.suggestedWeightKg ?: 0.0)
-            val targetReps = lastLog?.reps ?: (suggestedState?.suggestedReps ?: 12)
+            val targetWt = suggestedState?.suggestedWeightKg ?: lastLog?.weightKg ?: 0.0
+            val targetReps = suggestedState?.suggestedReps ?: lastLog?.reps ?: 12
 
             val library = dao.getExerciseLibrary()
             val exItem = library.find { it.id == exerciseId } ?: return@launch
@@ -1109,6 +1166,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 )
             }
             dao.insertWorkoutSetLogs(logsList)
+            loadExerciseHistory(session.id, listOf(exerciseId))
 
             val updatedSpecs = _activeSessionExercises.value.toMutableList().apply { add(se) }
             _activeSessionExercises.value = updatedSpecs
@@ -1223,15 +1281,17 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Throws the session away: it is stored as deleted so it never counts as a finished workout or as "last time" data. */
-    fun discardWorkout() {
+    fun discardWorkout(onDone: () -> Unit = {}) {
         val session = _currentActiveSession.value ?: return
         viewModelScope.launch {
             dao.softDeleteWorkoutSession(session.id)
             _currentActiveSession.value = null
             _activeSessionExercises.value = emptyList()
             _workoutSetLogs.value = emptyMap()
+            skipRest()
             clearActiveSessionFromPrefs() // FIX 6
             AnalyticsComputationService.recalculateDayCache(dao, session.date)
+            onDone()
         }
     }
 
@@ -1242,6 +1302,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             .putString("active_session_id", session.id)
             .putString("active_session_day_type", session.dayType)
             .putString("active_session_env", session.environment)
+            .putLong("active_clock_acc_ms", _sessionClock.value.accumulatedMs)
+            .putLong("active_clock_since_ms", _sessionClock.value.runningSinceMs ?: -1L)
             .apply()
     }
 
@@ -1250,7 +1312,112 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             .remove("active_session_id")
             .remove("active_session_day_type")
             .remove("active_session_env")
+            .remove("active_clock_acc_ms")
+            .remove("active_clock_since_ms")
             .apply()
+    }
+
+    fun pauseWorkout() {
+        if (_currentActiveSession.value == null) return
+        _sessionClock.value = _sessionClock.value.pause(System.currentTimeMillis())
+        persistActiveSessionToPrefs()
+    }
+
+    fun resumeWorkout() {
+        if (_currentActiveSession.value == null) return
+        _sessionClock.value = _sessionClock.value.resume(System.currentTimeMillis())
+        persistActiveSessionToPrefs()
+    }
+
+    private suspend fun loadExerciseHistory(sessionId: String, exerciseIds: Collection<String>) {
+        val loaded = _exerciseHistory.value.toMutableMap()
+        exerciseIds.filter { it !in loaded }.forEach { id ->
+            loaded[id] = ExerciseHistory(
+                previous = dao.getPreviousSessionSetsForExercise(id, sessionId).map { SetRef(it.weightKg, it.reps) },
+                best = dao.getBestFinishedSetForExercise(id, sessionId)?.let { SetRef(it.weightKg, it.reps) }
+            )
+        }
+        _exerciseHistory.value = loaded
+    }
+
+    // --- Workout settings edited from the Workout screen and Config
+    fun setWeeklyGymTarget(target: Int) = updateSettings { it.copy(weeklyGymTarget = target.coerceIn(1, 7)) }
+    fun setRestTimerEnabled(on: Boolean) = updateSettings { it.copy(restTimerEnabled = on) }
+    fun setRestSeconds(seconds: Int) = updateSettings { it.copy(restSeconds = seconds.coerceIn(15, 600)) }
+
+    private fun updateSettings(change: (AppSettings) -> AppSettings) {
+        viewModelScope.launch { dao.getAppSettingsDirectly()?.let { dao.insertAppSettings(change(it)) } }
+    }
+
+    // --- Rest timer (only when switched on in Config). Counts down only while the workout clock runs.
+    private fun startRest(nextLabel: String) {
+        restJob?.cancel()
+        restJob = viewModelScope.launch {
+            val settings = dao.getAppSettingsDirectly() ?: return@launch
+            if (!settings.restTimerEnabled) return@launch
+            _rest.value = RestState(settings.restSeconds, settings.restSeconds, nextLabel)
+            while ((_rest.value?.remaining ?: 0) > 0) {
+                delay(1000)
+                if (_sessionClock.value.isPaused) continue
+                _rest.update { it?.copy(remaining = (it.remaining - 1).coerceAtLeast(0)) }
+            }
+            delay(4000) // stays at 0 long enough to buzz and read
+            _rest.value = null
+        }
+    }
+
+    /** Adds or removes seconds on the running rest and remembers the new length as the default. */
+    fun adjustRest(deltaSeconds: Int) {
+        val r = _rest.value ?: return
+        if (r.remaining <= 0) return
+        val left = (r.remaining + deltaSeconds).coerceAtLeast(0)
+        _rest.value = r.copy(remaining = left, total = maxOf(r.total, left))
+        updateSettings { it.copy(restSeconds = (it.restSeconds + deltaSeconds).coerceIn(15, 600)) }
+    }
+
+    fun skipRest() {
+        restJob?.cancel()
+        _rest.value = null
+    }
+
+    /** Logs a set from the check button, then starts the rest timer when it is switched on. */
+    fun completeSet(logId: String, sessionExerciseId: String, reps: Int, weightKg: Double) {
+        updateWorkoutSetLogDirectly(logId, sessionExerciseId, reps, weightKg, isCompleted = true)
+        val names = exerciseLibrary.value.associate { it.id to it.name }
+        val exercises = _activeSessionExercises.value
+        val logs = _workoutSetLogs.value
+        val here = logs[sessionExerciseId].orEmpty().firstOrNull { !it.isCompleted && it.id != logId }
+        val label = if (here != null) {
+            val ex = exercises.firstOrNull { it.id == sessionExerciseId }
+            "Next: ${names[ex?.exerciseId] ?: "this exercise"}, set ${here.setIndex}"
+        } else {
+            val after = exercises.firstOrNull { e -> e.id != sessionExerciseId && logs[e.id].orEmpty().any { !it.isCompleted } }
+            if (after != null) "Next: ${names[after.exerciseId] ?: "next exercise"}, set 1" else "Last set done"
+        }
+        startRest(label)
+    }
+
+    /** Steps one set's weight or reps. Sets after it that are not logged yet follow, so one change carries down the list. */
+    fun setSetValues(sessionExerciseId: String, logId: String, reps: Int, weightKg: Double) {
+        val logs = _workoutSetLogs.value[sessionExerciseId] ?: return
+        val idx = logs.indexOfFirst { it.id == logId }
+        if (idx == -1) return
+        val updated = logs.mapIndexed { i, l ->
+            if (i == idx || (i > idx && !l.isCompleted)) l.copy(reps = reps.coerceAtLeast(0), weightKg = weightKg.coerceAtLeast(0.0)) else l
+        }
+        _workoutSetLogs.value = _workoutSetLogs.value.toMutableMap().apply { put(sessionExerciseId, updated) }
+        viewModelScope.launch { updated.filterIndexed { i, l -> l != logs[i] }.forEach { dao.updateWorkoutSetLog(it) } }
+    }
+
+    fun uncompleteSet(logId: String, sessionExerciseId: String) {
+        val log = _workoutSetLogs.value[sessionExerciseId]?.firstOrNull { it.id == logId } ?: return
+        updateWorkoutSetLogDirectly(logId, sessionExerciseId, log.reps, log.weightKg, isCompleted = false)
+    }
+
+    fun dismissWorkoutSummary() {
+        if (_workoutSummary.value == null) return
+        _workoutSummary.value = null
+        viewModelScope.launch { offerLink(LinkEvent.WORKOUT) } // the ask-first prompt comes after the summary
     }
 
     private suspend fun restoreActiveSessionFromPrefs() {
@@ -1258,7 +1425,11 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val session = dao.getWorkoutSessionById(sessionId)?.takeIf { it.endedAt == null && !it.isDeleted }
         if (session == null) { clearActiveSessionFromPrefs(); return }
         _currentActiveSession.value = session
+        _sessionClock.value = if (prefs.contains("active_clock_acc_ms"))
+            SessionClock.fromStored(prefs.getLong("active_clock_acc_ms", 0L), prefs.getLong("active_clock_since_ms", -1L))
+        else SessionClock.startedAt(System.currentTimeMillis()) // session saved before the clock existed
         val exercises = dao.getWorkoutSessionExercises(session.id)
+        loadExerciseHistory(session.id, exercises.map { it.exerciseId })
         _activeSessionExercises.value = exercises
         val logsMap = mutableMapOf<String, List<WorkoutSetLog>>()
         exercises.forEach { se -> logsMap[se.id] = dao.getWorkoutSetLogs(se.id) }
@@ -1296,64 +1467,31 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // FIX 5: Finish Workout — dual-reference: saves actuals as defaults + engine suggestion as target
+    // Finish Workout: saves the session with its active time, stores next-time targets and shows the summary (see FinishWorkoutUseCase)
     fun finishWorkout() {
         val session = _currentActiveSession.value ?: return
+        if (finishingWorkout) return
+        finishingWorkout = true
         val endedIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-        val updatedSession = session.copy(endedAt = endedIso)
+        val seconds = _sessionClock.value.elapsedSeconds(System.currentTimeMillis())
+        val exercises = _activeSessionExercises.value
+        val logs = _workoutSetLogs.value
+        val names = exerciseLibrary.value.associate { it.id to it.name }
         viewModelScope.launch {
-            // One transaction: a kill halfway must not leave an ended session with only some next-time targets saved
-            db.withTransaction {
-            dao.insertWorkoutSession(updatedSession)
-            _activeSessionExercises.value.forEach { se ->
-                val logs = _workoutSetLogs.value[se.id] ?: emptyList()
-                val completedLogs = logs.filter { it.isCompleted }
-                
-                // 1. Determine "Next Default" based on best performance in this session
-                // We pick the set with the highest weight. If tied, highest reps.
-                val bestLog = completedLogs.maxWithOrNull(compareBy({ it.weightKg }, { it.reps }))
-                
-                // 2. Also consider the manually adjusted targets as potential defaults
-                val finalWeight = maxOf(bestLog?.weightKg ?: 0.0, se.targetWeightKg ?: 0.0)
-                val finalReps = if (bestLog != null && bestLog.weightKg >= (se.targetWeightKg ?: 0.0)) {
-                    maxOf(bestLog.reps, se.targetRepsMax)
-                } else {
-                    se.targetRepsMax
-                }
-
-                if (finalWeight > 0) {
-                    dao.insertExerciseProgression(
-                        ExerciseProgressionState(
-                            exerciseId = se.exerciseId,
-                            suggestedWeightKg = finalWeight,
-                            suggestedReps = finalReps,
-                            lastUpdatedAt = endedIso
-                        )
-                    )
-                }
-
-                // Progressive Overload Engine Suggestion (Legacy logic support)
-                val targetReps = se.targetRepsMax
-                val currentWeight = se.targetWeightKg ?: 0.0
-                val engineSuggestion = ProgressiveOverloadEngine.evaluateProgression(completedLogs, targetReps, currentWeight)
-                if (engineSuggestion > currentWeight) {
-                    dao.insertExerciseProgression(
-                        ExerciseProgressionState(
-                            exerciseId = se.exerciseId + "_suggestion",
-                            suggestedWeightKg = engineSuggestion,
-                            suggestedReps = targetReps,
-                            lastUpdatedAt = endedIso
-                        )
-                    )
-                }
+            try {
+                val summary = FinishWorkoutUseCase(db, dao)(
+                    session, exercises, logs, seconds, endedIso, names, DayBoundaryManager.currentTargetDate.value, cardio = null
+                )
+                _currentActiveSession.value = null
+                _activeSessionExercises.value = emptyList()
+                _workoutSetLogs.value = emptyMap()
+                skipRest()
+                clearActiveSessionFromPrefs() // FIX 6
+                _workoutSummary.value = summary
+                AnalyticsComputationService.recalculateDayCache(dao, session.date)
+            } finally {
+                finishingWorkout = false
             }
-            }
-            _currentActiveSession.value = null
-            _activeSessionExercises.value = emptyList()
-            _workoutSetLogs.value = emptyMap()
-            clearActiveSessionFromPrefs() // FIX 6
-            AnalyticsComputationService.recalculateDayCache(dao, session.date)
-            offerLink(LinkEvent.WORKOUT)
         }
     }
 
