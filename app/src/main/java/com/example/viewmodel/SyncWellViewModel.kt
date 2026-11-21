@@ -13,6 +13,7 @@ import com.example.service.DailyBackupReceiver
 import com.example.service.DriveConsentRequiredException
 import com.example.service.DayBoundaryManager
 import com.example.service.GoalService
+import com.example.service.ReminderScheduler
 import com.example.service.HealthConnectService
 import com.example.service.ProgressiveOverloadEngine
 import com.example.service.SupplementValidator
@@ -275,6 +276,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             // FIX 6: Restore any in-progress workout session
             restoreActiveSessionFromPrefs()
             restoreFocusFromPrefs()
+            ReminderScheduler.scheduleAll(getApplication())
             // FEATURE 14: Schedule the daily 9 PM backup alarm
             scheduleDailyBackupAt9PM()
             // Listen to active calendar changes to load layout
@@ -354,6 +356,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             goalWeightKg?.let { _targetWeightKg.value = it }
             DatabaseSeeder.seedStarterRoutines(dao, answers)
             rebuildTodayRoutine()
+            ReminderScheduler.scheduleAll(getApplication()) // wake and bedtime may have changed
         }
     }
 
@@ -812,6 +815,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun bootTimer(type: String) {
         _activeContextType.value = type
         _isActiveTimerRunning.value = true
+        requestNotificationPermission() // the focus notification is hidden on Android 13+ until this is granted
         startTimerService(type, _activeTodoTag.value)
         val baseSec = _accumulatedSeconds.value
         val runStartMs = System.currentTimeMillis()
@@ -1551,26 +1555,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     // Keep old name as alias for Settings screen backward compat
     fun forceManualBackup() = triggerTestBackup()
 
-    // FEATURE 14: Schedule daily 9PM backup using AlarmManager
-    fun scheduleDailyBackupAt9PM() {
-        val alarmManager = getApplication<Application>().getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
-        val intent = android.content.Intent(getApplication(), DailyBackupReceiver::class.java)
-        val pendingIntent = android.app.PendingIntent.getBroadcast(
-            getApplication(), 9000, intent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 21)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            if (timeInMillis < System.currentTimeMillis()) add(java.util.Calendar.DAY_OF_YEAR, 1)
-        }
-        alarmManager.setInexactRepeating(
-            android.app.AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            android.app.AlarmManager.INTERVAL_DAY,
-            pendingIntent
-        )
+    // FEATURE 14: Schedule daily 9PM backup (also re-set after a restart by BootReceiver)
+    fun scheduleDailyBackupAt9PM() = ReminderScheduler.scheduleBackup9PM(getApplication())
+
+    // GENTLE REMINDERS: off until the user turns them on, and the permission is asked for then
+    private val _remindersEnabled = MutableStateFlow(ReminderScheduler.isEnabled(application))
+    val remindersEnabled: StateFlow<Boolean> = _remindersEnabled.asStateFlow()
+
+    private val _notificationPermissionRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val notificationPermissionRequest: SharedFlow<Unit> = _notificationPermissionRequest.asSharedFlow()
+
+    fun requestNotificationPermission() { _notificationPermissionRequest.tryEmit(Unit) }
+
+    fun setRemindersEnabled(on: Boolean) {
+        prefs.edit().putBoolean("reminders_enabled", on).apply()
+        _remindersEnabled.value = on
+        if (on) requestNotificationPermission()
+        viewModelScope.launch { ReminderScheduler.scheduleAll(getApplication()) }
     }
 
     // HYDRATION (Water tracker additions)

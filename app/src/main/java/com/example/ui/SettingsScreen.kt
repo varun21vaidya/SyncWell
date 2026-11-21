@@ -334,6 +334,32 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        // Gentle reminders: off until switched on; the notification permission is asked for here
+        val remindersEnabled by viewModel.remindersEnabled.collectAsState()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("GENTLE REMINDERS", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(
+                    "A morning plan and, when a streak is at stake, an evening nudge: never more than 2 a day. After 2 days away you get one welcome-back note (at most 2 per break). Silent on vacation, between bedtime and wake time, and once the day is at 80%.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Reminders", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Switch(
+                        checked = remindersEnabled,
+                        onCheckedChange = { viewModel.setRemindersEnabled(it) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = EmeraldGlow, checkedTrackColor = EmeraldDim),
+                        modifier = Modifier.testTag("reminders_switch")
+                    )
+                }
+            }
+        }
+
         // Ask-first prompts: the only opt-out for "tick it?" questions
         val linkEnabled by viewModel.linkEnabled.collectAsState()
         Card(
