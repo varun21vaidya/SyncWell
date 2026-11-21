@@ -320,6 +320,14 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    // Monday-to-Sunday marks for the Home streak card
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val weekMarks: StateFlow<List<WeekMark>> = DayBoundaryManager.currentTargetDate.flatMapLatest { today ->
+        dao.getAnalyticsBetween(WeekKey.of(today), today).map { rows ->
+            WeekBar.of(today, rows.filter { DayCompletion.qualifies(it.routineCompletionPct) }.map { it.dateKey }.toSet())
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), List(7) { WeekMark.EMPTY })
+
     // Level from every qualifying day (80% or more) in the history
     val level: StateFlow<LevelResult> = dao.countQualifyingDays().map { LevelRule.of(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LevelRule.of(0))

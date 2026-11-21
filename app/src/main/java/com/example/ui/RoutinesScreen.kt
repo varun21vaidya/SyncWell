@@ -659,15 +659,15 @@ fun RoutineDetailView(
 
 fun getCategoryColors(category: String): Pair<Color, Color> {
     return when (category.uppercase()) {
-        "DIET" -> AmberDim to AmberFlame
+        "DIET" -> StreakDim to AmberFlame
         "SKINCARE" -> EmeraldDim to EmeraldGlow
         "STUDY" -> VioletDim to VioletPulse
         "WORKOUT" -> Color(0xFF1E1B4B) to CyanLaser
         "HYGIENE" -> CyanDim to CyanLaser
         "HAIRCARE" -> RoseDim to RoseCrimson
         "PREP" -> SurfaceTier2 to TextSecondary
-        "HEALTH" -> AmberDim to AmberFlame
-        "SUPPLEMENT" -> AmberDim to AmberFlame
+        "HEALTH" -> StreakDim to AmberFlame
+        "SUPPLEMENT" -> StreakDim to AmberFlame
         else -> SurfaceTier2 to TextSecondary
     }
 }

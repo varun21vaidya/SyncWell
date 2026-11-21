@@ -2,59 +2,83 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── OLED Surfaces ──────────────────────────────────────────────────────────
-val OledBlack         = Color(0xFF000000)  // Screen background (saves OLED power)
-val SurfaceTier1      = Color(0xFF0A0C10)  // Cards / list items
-val SurfaceTier2      = Color(0xFF12151F)  // Elevated cards / modal sheets
-val SurfaceTier3      = Color(0xFF1C2234)  // Selected / interactive states
-val OledBorder        = Color(0xFF242B3F)  // Subtle 1 dp card borders
-val OledBorderActive  = Color(0xFF4F5B78)  // Focused / active borders
+// ── "Deep tide" tokens (docs/DESIGN_REFRESH_PLAN.md §3) ────────────────────────
+// Colour means something: green = progress/done, gold = streak and rewards, blue = water,
+// violet = focus, coral = gym. Coloured areas are a tint of the surface, never a solid block.
+val Background    = Color(0xFF05070D)  // Screen: near-black, navy-tinted, still OLED-friendly
+val Surface1      = Color(0xFF0D1322)  // Cards
+val Surface2      = Color(0xFF141C30)  // Sheets, dialogs, selected rows
+val Surface3      = Color(0xFF1A2236)  // Tracks, inactive rings, chips
+val Border        = Color(0xFF22304D)  // 1 dp card border
 
-// ── Semantic Accent Colors ──────────────────────────────────────────────────
-val EmeraldGlow   = Color(0xFF10B981)  // Health, routine done, hydration CTA
-val EmeraldDim    = Color(0xFF064E3B)  // Emerald container / badge background
-val Emerald400    = Color(0xFF34D399)  // Lighter emerald for progress highlights
-val Emerald500    = Color(0xFF10B981)  // Alias for existing usages
-val Emerald600    = Color(0xFF059669)  // Alias for existing usages
-val Emerald700    = Color(0xFF047857)  // Alias for existing usages
-val Emerald100    = Color(0xFFD1FAE5)  // Light badge background (light mode only)
+val TextPrimary   = Color(0xFFE8EEF7)  // Titles, numbers (soft white, less OLED glare)
+val TextSecondary = Color(0xFF9AA8BF)  // Labels, captions (about 7.6:1 on Surface1)
+val TextMuted     = Color(0xFF64738C)  // Hints, day letters
 
-val CyanLaser     = Color(0xFF06B6D4)  // Hydration, water intake
-val CyanDim       = Color(0xFF164E63)  // Water container background
+val Progress      = Color(0xFF3DDC97)  // Done, rings, primary button
+val OnProgress    = Color(0xFF05291A)  // Text and icons on Progress
+val Streak        = Color(0xFFFFC857)  // Streak number, week bar, badge highlights
+val Water         = Color(0xFF4FB8FF)  // Water ring and log
+val Focus         = Color(0xFFA78BFA)  // Focus timer
+val Gym           = Color(0xFFFF7A85)  // Workout
+val Danger        = Color(0xFFFF5C6C)  // Delete only
 
-val VioletPulse   = Color(0xFF8B5CF6)  // Focus sessions, study mode
-val VioletDim     = Color(0xFF3B1D6E)  // Focus container background
-val PurpleAccent  = Color(0xFF8B5CF6)  // Alias for existing usages
+// Tints: the accent at 12-14% over Surface1, used as container fills
+val ProgressDim   = Color(0xFF142F32)
+val StreakDim     = Color(0xFF2A2928)
+val WaterDim      = Color(0xFF162A41)
+val FocusDim      = Color(0xFF232440)
+val GymDim        = Color(0xFF2F2130)
+val DangerDim     = Color(0xFF2F1D2C)
 
-val AmberFlame    = Color(0xFFF59E0B)  // Streak, warnings, gold badges
-val AmberDim      = Color(0xFF78350F)  // Warning container background
-val GoldAccent    = Color(0xFFF59E0B)  // Alias for existing usages
+// ── Aliases: the old names keep working, so screens move over one at a time ─────
+val OledBlack         = Background
+val SurfaceTier1      = Surface1
+val SurfaceTier2      = Surface2
+val SurfaceTier3      = Surface3
+val OledBorder        = Border
+val OledBorderActive  = Color(0xFF3A4B70)  // Focused / active borders
 
-val RoseCrimson   = Color(0xFFF43F5E)  // High priority, workout, delete
-val RoseDim       = Color(0xFF881337)  // Danger container background
-val RoseAccent    = Color(0xFFF43F5E)  // Alias for existing usages
+val EmeraldGlow   = Progress
+val EmeraldDim    = ProgressDim
+val Emerald400    = Progress
+val Emerald500    = Progress
+val Emerald600    = Progress
+val Emerald700    = Color(0xFF2BB57A)      // Success state of a mint button
+val Emerald100    = Color(0xFFD1FAE5)      // Light badge background (light scheme only)
 
-val IndigoAccent  = Color(0xFF4F46E5)  // Secondary brand color
+val CyanLaser     = Water
+val CyanDim       = WaterDim
 
-// ── Text Hierarchy ───────────────────────────────────────────────────────────
-val TextPrimary   = Color(0xFFF8FAFC)  // Headings — 95% white
-val TextSecondary = Color(0xFF94A3B8)  // Sub-labels, captions
-val TextMuted     = Color(0xFF64748B)  // Timestamps, placeholders
-val TextInverse   = Color(0xFF000000)  // On bright accent buttons
+val VioletPulse   = Focus
+val VioletDim     = FocusDim
+val PurpleAccent  = Focus
 
-// ── Legacy Slate Aliases (keep for backward compat) ──────────────────────────
+val AmberFlame    = Streak
+val AmberDim      = Surface1               // No longer a card fill: use StreakDim for a tint
+val GoldAccent    = Streak
+
+val RoseCrimson   = Gym
+val RoseDim       = GymDim
+val RoseAccent    = Gym
+
+val IndigoAccent  = Color(0xFF4F46E5)      // Secondary brand colour
+
+val TextInverse   = OnProgress
+
+// ── Legacy Slate aliases ────────────────────────────────────────────────────────
 val Slate50   = Color(0xFFF8FAFC)
 val Slate100  = Color(0xFFF1F5F9)
 val Slate200  = Color(0xFFE2E8F0)
-val Slate400  = Color(0xFF94A3B8)
+val Slate400  = TextSecondary
 val Slate700  = Color(0xFF334155)
 val Slate800  = Color(0xFF1E293B)
 val Slate900  = Color(0xFF0F172A)
 
-// ── Legacy Surface Aliases ────────────────────────────────────────────────────
-val RichBlack          = Color(0xFF000000)   // Now true OLED black
-val SurfaceDeep        = Color(0xFF0A0C10)   // Was #1E1E1E — now tier 1
-val SurfaceVariantDeep = Color(0xFF12151F)   // Was #2C2C2C — now tier 2
+// ── Legacy surface aliases ───────────────────────────────────────────────────────
+val RichBlack          = Background
+val SurfaceDeep        = Surface1
+val SurfaceVariantDeep = Surface2
 
 // ── Misc ──────────────────────────────────────────────────────────────────────
-val OnboardBg = Color(0xFFF8FAF9)            // Light onboarding (unchanged)
+val OnboardBg = Color(0xFFF8FAF9)          // Light onboarding (unchanged)

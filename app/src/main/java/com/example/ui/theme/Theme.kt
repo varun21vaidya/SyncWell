@@ -1,44 +1,51 @@
 package com.example.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 
 private val DarkColorScheme = darkColorScheme(
-    primary            = EmeraldGlow,
-    onPrimary          = OledBlack,
-    primaryContainer   = EmeraldDim,
-    onPrimaryContainer = EmeraldGlow,
+    primary            = Progress,
+    onPrimary          = OnProgress,
+    primaryContainer   = ProgressDim,
+    onPrimaryContainer = Progress,
 
-    secondary            = VioletPulse,
-    onSecondary          = OledBlack,
-    secondaryContainer   = VioletDim,
-    onSecondaryContainer = VioletPulse,
+    secondary            = Focus,
+    onSecondary          = Background,
+    secondaryContainer   = FocusDim,
+    onSecondaryContainer = Focus,
 
-    tertiary            = AmberFlame,
-    onTertiary          = OledBlack,
-    tertiaryContainer   = AmberDim,
-    onTertiaryContainer = AmberFlame,
+    tertiary            = Streak,
+    onTertiary          = Background,
+    tertiaryContainer   = StreakDim,
+    onTertiaryContainer = Streak,
 
-    error            = RoseCrimson,
-    onError          = OledBlack,
-    errorContainer   = RoseDim,
-    onErrorContainer = RoseCrimson,
+    error            = Danger,
+    onError          = Background,
+    errorContainer   = DangerDim,
+    onErrorContainer = Danger,
 
-    background        = OledBlack,       // #000000
-    onBackground      = TextPrimary,     // #F8FAFC
+    background        = Background,
+    onBackground      = TextPrimary,
 
-    surface           = SurfaceTier1,   // #0A0C10
+    surface           = Surface1,
     onSurface         = TextPrimary,
-    surfaceVariant    = SurfaceTier2,   // #12151F
+    surfaceVariant    = Surface2,
     onSurfaceVariant  = TextSecondary,
+    surfaceContainerLowest  = Background,
+    surfaceContainerLow     = Surface1,
+    surfaceContainer        = Surface1,
+    surfaceContainerHigh    = Surface2,
+    surfaceContainerHighest = Surface3,
 
-    outline           = OledBorder,     // #242B3F
+    outline           = Border,
     outlineVariant    = OledBorderActive,
 
-    scrim             = Color(0xCC000000)
+    scrim             = Color(0x99000000)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -82,7 +89,9 @@ fun MyApplicationTheme(
     // Dark Mode Only: The application is designed exclusively with the high-performance OLED Dark Theme
     MaterialTheme(
         colorScheme = DarkColorScheme,
-        typography  = Typography,
-        content     = content
-    )
+        typography  = Typography
+    ) {
+        // Tabular numbers everywhere, so counters and timers do not jump as digits change
+        ProvideTextStyle(TextStyle(fontFeatureSettings = "tnum"), content)
+    }
 }

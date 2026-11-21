@@ -101,13 +101,13 @@ fun HeatmapCard(days: List<HeatmapDay>, today: String) {
 }
 
 private fun tileColor(day: HeatmapDay?, future: Boolean) = when {
-    future -> SurfaceTier1
-    day == null -> SurfaceTier3
-    day.vacation -> CyanDim
-    day.percent >= 0.999 -> EmeraldGlow
-    day.countedTowardStreak -> EmeraldDim
-    day.percent > 0 -> AmberDim
-    else -> SurfaceTier3
+    future -> Surface1
+    day == null -> Surface3
+    day.vacation -> WaterDim
+    day.countedTowardStreak -> Progress // 80% or more
+    day.percent >= 0.5 -> Progress.copy(alpha = 0.55f)
+    day.percent > 0 -> Progress.copy(alpha = 0.28f)
+    else -> Surface3
 }
 
 @Composable

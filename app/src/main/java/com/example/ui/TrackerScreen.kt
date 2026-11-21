@@ -230,7 +230,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                                 label = { Text("No tag", fontSize = 12.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Emerald500,
-                                    selectedLabelColor = Color.White
+                                    selectedLabelColor = OnProgress
                                 ),
                                 shape = RoundedCornerShape(20.dp)
                             )
@@ -250,7 +250,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = Emerald500,
-                                        selectedLabelColor = Color.White
+                                        selectedLabelColor = OnProgress
                                     ),
                                     shape = RoundedCornerShape(20.dp),
                                     modifier = Modifier.alpha(if (item.isCompleted) 0.6f else 1f)

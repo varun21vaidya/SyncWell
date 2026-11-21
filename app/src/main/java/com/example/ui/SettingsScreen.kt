@@ -472,9 +472,9 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                             Text("Backup Successful!", color = OledBlack, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         backupTestResult?.startsWith("FAILED") == true -> {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color.White)
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = OledBlack)
                             Spacer(Modifier.width(8.dp))
-                            Text("Backup Failed", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Backup failed", color = OledBlack, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         else -> {
                             Icon(Icons.Default.Share, contentDescription = null, tint = OledBlack)
@@ -605,8 +605,8 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reset", tint = Color.White)
-                        Text("Reset Today's Routine", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reset", tint = OledBlack)
+                        Text("Reset today's routine", color = OledBlack, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }

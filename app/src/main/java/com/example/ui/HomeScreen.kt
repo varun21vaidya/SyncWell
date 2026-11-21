@@ -53,6 +53,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val completedCount = activeRoutineItems.count { it.isDone }
     val isVacationActive by viewModel.isVacationActive.collectAsState()
     val level by viewModel.level.collectAsState()
+    val weekMarks by viewModel.weekMarks.collectAsState()
     val goals by viewModel.shortTermGoals.collectAsState()
     val goalWeekCounts by viewModel.goalWeekCounts.collectAsState()
     val dayItems = remember(activeRoutineItems) {
@@ -102,7 +103,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 onClick = { onNavigateToTab(1) }
             )
         }
-        StreakChip(activeStreak, completedCount, activeRoutineItems.size, isVacationActive, level)
+        StreakChip(activeStreak, completedCount, activeRoutineItems.size, isVacationActive, level, weekMarks)
         if (activeRoutineItems.isNotEmpty()) {
             UpNextCard(UpNextRule.next(dayItems, nowMinutes)) { next ->
                 activeRoutineItems.firstOrNull { it.id == next.id }?.let { viewModel.toggleRoutineItem(it) }

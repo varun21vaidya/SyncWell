@@ -56,7 +56,7 @@ fun PrBadge(count: Int = 0) {
     Text(
         text = if (count > 1) "PR ×$count" else "PR",
         color = AmberFlame, fontSize = 11.sp, fontWeight = FontWeight.Black,
-        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(AmberDim).padding(horizontal = 6.dp, vertical = 2.dp)
+        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(StreakDim).padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }
 

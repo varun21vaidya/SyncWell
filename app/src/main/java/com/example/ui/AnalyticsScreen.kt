@@ -297,7 +297,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             fontWeight = FontWeight.Black
                         )
                         Surface(
-                            color = AmberDim,
+                            color = StreakDim,
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
@@ -345,7 +345,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         val (deltaBg, deltaFg, deltaText) = when {
                             weightDelta == null -> Triple(SurfaceTier2, Slate400, "Goal: ${String.format(Locale.US, "%.1f", targetWeightKg)} kg")
                             Math.abs(weightDelta) < 0.1 -> Triple(EmeraldDim, EmeraldGlow, "🎯 On Target")
-                            weightDelta > 0 -> Triple(AmberDim, GoldAccent, "+${String.format(Locale.US, "%.1f", weightDelta)} kg to goal")
+                            weightDelta > 0 -> Triple(StreakDim, GoldAccent, "+${String.format(Locale.US, "%.1f", weightDelta)} kg to goal")
                             else -> Triple(CyanDim, CyanLaser, "${String.format(Locale.US, "%.1f", weightDelta)} kg to goal")
                         }
 

@@ -50,6 +50,7 @@ import com.example.ui.TrackerScreen
 import com.example.ui.WorkoutScreen
 import com.example.ui.theme.Emerald500
 import com.example.ui.theme.Emerald600
+import com.example.ui.theme.OnProgress
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.OledBlack
@@ -144,7 +145,7 @@ class MainActivity : ComponentActivity() {
                             onClick = { viewModel.confirmProteinIntake(item, true) },
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Emerald600)
                         ) {
-                            Text("Yes, Protein Taken", color = androidx.compose.ui.graphics.Color.White)
+                            Text("Yes, protein taken", color = OnProgress)
                         }
                     },
                     dismissButton = {
