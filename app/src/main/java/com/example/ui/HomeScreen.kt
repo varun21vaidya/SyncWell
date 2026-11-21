@@ -27,6 +27,8 @@ import com.example.domain.CategoryRings
 import com.example.domain.DayCompletion
 import com.example.domain.DayItem
 import com.example.domain.UpNextRule
+import com.example.domain.dateHeader
+import com.example.domain.greetingFor
 import com.example.service.DayBoundaryManager
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
@@ -75,21 +77,17 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                val todayKey by DayBoundaryManager.currentTargetDate.collectAsState()
                 Text(
-                    text = "EXECUTIVE OVERVIEW",
-                    color = Slate400,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = "SyncWell Control",
+                    text = greetingFor(nowMinutes / 60),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("home_greeting")
                 )
+                Text(text = dateHeader(todayKey), color = Slate400, fontSize = 12.sp)
             }
 
         }

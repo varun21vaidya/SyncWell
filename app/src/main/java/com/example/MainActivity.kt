@@ -117,12 +117,8 @@ class MainActivity : ComponentActivity() {
                             OnboardingScreen(viewModel = viewModel)
                         }
                         is AppLaunchState.Ready -> {
-                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                                MainNavigationContainer(
-                                    viewModel = viewModel,
-                                    modifier = Modifier.padding(innerPadding)
-                                )
-                            }
+                            // The container's own Scaffold applies the system-bar insets once; a second Scaffold here doubled them
+                            MainNavigationContainer(viewModel = viewModel, modifier = Modifier.fillMaxSize())
                         }
                     }
 
