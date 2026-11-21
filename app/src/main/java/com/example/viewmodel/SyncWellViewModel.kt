@@ -170,6 +170,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Streaks())
     
+    // Level from every qualifying day (80% or more) in the history
+    val level: StateFlow<LevelResult> = dao.countQualifyingDays().map { LevelRule.of(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LevelRule.of(0))
+
     private val _todayAnalytics = MutableStateFlow<DailyAnalytics?>(null)
     val todayAnalytics: StateFlow<DailyAnalytics?> = _todayAnalytics.asStateFlow()
 

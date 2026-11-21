@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
             val appLaunchState by viewModel.appLaunchState.collectAsState()
             val activeModal by viewModel.activeModal.collectAsState()
             val linkPrompt by viewModel.linkPrompt.collectAsState()
+            val proteinTask by viewModel.proteinConfirmationTask.collectAsState()
 
             MyApplicationTheme(darkTheme = true) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -119,6 +120,43 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+            // Protein Intake Confirmation Dialog
+            proteinTask?.let { item ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelProteinConfirmation() },
+                    title = {
+                        Text(
+                            text = "Protein Intake Verification",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            fontSize = 18.sp
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Did you ensure adequate high-quality protein was consumed for this block (${item.title})?",
+                            fontSize = 14.sp
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.Button(
+                            onClick = { viewModel.confirmProteinIntake(item, true) },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Emerald600)
+                        ) {
+                            Text("Yes, Protein Taken", color = androidx.compose.ui.graphics.Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { viewModel.confirmProteinIntake(item, false) }
+                        ) {
+                            Text("No / Skip Protein", color = Slate400)
+                        }
+                    },
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
+                )
+            }
 
                     linkPrompt?.let { p ->
                         AlertDialog(

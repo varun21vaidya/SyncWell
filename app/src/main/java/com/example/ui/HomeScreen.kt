@@ -23,6 +23,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.domain.CategoryRings
+import com.example.domain.DayCompletion
+import com.example.domain.DayItem
+import com.example.domain.UpNextRule
 import com.example.service.DayBoundaryManager
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
@@ -45,8 +49,14 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
     val studyMins = todayAnalytics?.totalStudyMinutes ?: 0
 
     val completedCount = activeRoutineItems.count { it.isDone }
-    val totalCount = if (activeRoutineItems.isNotEmpty()) activeRoutineItems.size else 1
-    val completionRatio = completedCount.toFloat() / totalCount
+    val isVacationActive by viewModel.isVacationActive.collectAsState()
+    val level by viewModel.level.collectAsState()
+    val goals by viewModel.shortTermGoals.collectAsState()
+    val dayItems = remember(activeRoutineItems) {
+        activeRoutineItems.map { DayItem(it.id, it.title, it.category, it.scheduledTime, it.isDone) }
+    }
+    var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(60_000); nowMinutes = currentMinutes() } }
 
 
     Column(
@@ -81,90 +91,25 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 )
             }
 
-            // Flame Streak Badge (Uses core Star icon)
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(AmberDim)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Active Streak Star",
-                    tint = AmberFlame,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "${activeStreak.current} Days · Best ${activeStreak.best}",
-                    color = AmberFlame,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
         }
 
-        // Checklist Status Progress Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigateToTab(1) }, // Navigates to Routine Tab
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, OledBorder)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "TODAY'S ROUTINE",
-                    color = Slate400,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = "$completedCount / ${activeRoutineItems.size}",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.testTag("routine_completed_text")
-                    )
-                    Text(
-                        text = "Checklist Tasks",
-                        color = Slate400,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Custom Rounded Progress Bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceTier3)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(if (completionRatio > 0f) completionRatio else 0.01f)
-                            .clip(CircleShape)
-                            .background(EmeraldGlow)
-                    )
-                }
+        if (activeRoutineItems.isEmpty()) {
+            EmptyDayCard { onNavigateToTab(1) }
+        } else {
+            DayRingCard(
+                percent = DayCompletion.of(completedCount, activeRoutineItems.size).percent,
+                done = completedCount, total = activeRoutineItems.size,
+                categories = CategoryRings.of(dayItems), waterMl = totalWaterMl, waterGoalMl = waterGoalMl,
+                onClick = { onNavigateToTab(1) }
+            )
+        }
+        StreakChip(activeStreak, completedCount, activeRoutineItems.size, isVacationActive, level)
+        if (activeRoutineItems.isNotEmpty()) {
+            UpNextCard(UpNextRule.next(dayItems, nowMinutes)) { next ->
+                activeRoutineItems.firstOrNull { it.id == next.id }?.let { viewModel.toggleRoutineItem(it) }
             }
         }
+        GoalsStrip(goals) { onNavigateToTab(4) }
 
         // Two Column Split: Hydration & Study Time
         Row(
@@ -356,3 +301,5 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
         }
     }
 }
+
+private fun currentMinutes(): Int = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) * 60 + it.get(java.util.Calendar.MINUTE) }

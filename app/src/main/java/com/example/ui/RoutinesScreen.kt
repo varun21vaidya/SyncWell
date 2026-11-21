@@ -77,7 +77,6 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
     var showHelp by remember { mutableStateOf(false) }
     if (showHelp) RoutineHelpDialog { showHelp = false }
 
-    val proteinConfirmationTask by viewModel.proteinConfirmationTask.collectAsState()
 
     BackHandler(enabled = selectedRoutineItem != null) {
         selectedRoutineItem = null
@@ -298,43 +297,6 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                 }
             }
         }
-    }
-
-    // Protein Intake Confirmation Dialog
-    proteinConfirmationTask?.let { item ->
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelProteinConfirmation() },
-            title = {
-                Text(
-                    text = "Protein Intake Verification",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
-                )
-            },
-            text = {
-                Text(
-                    text = "Did you ensure adequate high-quality protein was consumed for this block (${item.title})?",
-                    fontSize = 14.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.confirmProteinIntake(item, true) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600)
-                ) {
-                    Text("Yes, Protein Taken", color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.confirmProteinIntake(item, false) }
-                ) {
-                    Text("No / Skip Protein", color = Slate400)
-                }
-            },
-            shape = RoundedCornerShape(20.dp),
-            containerColor = MaterialTheme.colorScheme.surface
-        )
     }
 
     // Circular warning Circadian Dialog Alert past 4 PM
