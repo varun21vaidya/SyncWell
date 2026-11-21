@@ -25,7 +25,6 @@ import com.example.viewmodel.SyncWellViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SyncWellViewModel) {
-    val theme by viewModel.theme.collectAsState()
     val backupEnabled by viewModel.backupEnabled.collectAsState()
     val isVacationActive by viewModel.isVacationActive.collectAsState()
     val isCloudBackupSyncInProgress by viewModel.isCloudBackupSyncInProgress.collectAsState()
@@ -57,69 +56,6 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black
             )
-        }
-
-        // Card 1: DISPLAY/THEME PANEL
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, OledBorder)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "DISPLAY SETTINGS",
-                    color = Slate400,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Theme Icon",
-                            tint = EmeraldGlow
-                        )
-                        Column {
-                            Text(
-                                text = "Pure OLED Dark Mode",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Locked to Dark Mode for high-contrast data density",
-                                color = Slate400,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    Surface(
-                        color = EmeraldDim,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, EmeraldGlow.copy(alpha = 0.5f)),
-                        modifier = Modifier.testTag("theme_mode_switch")
-                    ) {
-                        Text(
-                            text = "ACTIVE",
-                            color = EmeraldGlow,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
         }
 
         // Card: TARGET WEIGHT & FITNESS TARGETS

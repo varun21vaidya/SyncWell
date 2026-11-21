@@ -105,24 +105,25 @@ fun ActiveSessionContent(
             shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(NextSplitRule.splitOf(session.dayType)?.title ?: session.dayType, color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(formatClock(elapsed), fontSize = 30.sp, fontWeight = FontWeight.Black, color = if (clock.isPaused) TextSecondary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.testTag("session_timer"))
-                            if (clock.isPaused) Text("Paused", color = AmberFlame, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.testTag("paused_label"))
-                        }
-                    }
+                // Title and PAUSED get a full-width line of their own; beside the timer and two buttons they were squeezed to nothing
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(NextSplitRule.splitOf(session.dayType)?.title ?: session.dayType, color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (clock.isPaused) Text("PAUSED", color = AmberFlame, fontWeight = FontWeight.Black, fontSize = 11.sp, maxLines = 1, softWrap = false, modifier = Modifier.testTag("paused_label"))
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(formatClock(elapsed), fontSize = 30.sp, fontWeight = FontWeight.Black, maxLines = 1, color = if (clock.isPaused) TextSecondary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f).testTag("session_timer"))
                     OutlinedButton(
                         onClick = if (clock.isPaused) onResume else onPause, shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
                         modifier = Modifier.height(48.dp).testTag("pause_resume_button")
-                    ) { Text(if (clock.isPaused) "Resume" else "Pause", fontWeight = FontWeight.Bold) }
+                    ) { Text(if (clock.isPaused) "Resume" else "Pause", fontWeight = FontWeight.Bold, maxLines = 1) }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = onFinish, shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow),
                         modifier = Modifier.height(48.dp).testTag("finish_workout_button")
-                    ) { Text("Finish", fontWeight = FontWeight.Black, color = OledBlack) }
+                    ) { Text("Finish", fontWeight = FontWeight.Black, color = OledBlack, maxLines = 1) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(if (exercises.isEmpty()) "No exercises yet" else "Exercise ${currentIdx + 1} of ${exercises.size}", color = TextSecondary, fontSize = 12.sp)
@@ -257,7 +258,7 @@ private fun ExerciseCard(
 @Composable
 private fun SetRow(log: WorkoutSetLog, previous: String, isPr: Boolean, onCheck: () -> Unit, onKg: (Double) -> Unit, onReps: (Int) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (log.isCompleted) EmeraldDim.copy(alpha = 0.35f) else SurfaceTier2).padding(horizontal = 10.dp, vertical = 4.dp)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (log.isCompleted) EmeraldDim.copy(alpha = 0.35f) else SurfaceTier2).padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -270,22 +271,22 @@ private fun SetRow(log: WorkoutSetLog, previous: String, isPr: Boolean, onCheck:
                     tint = if (log.isCompleted) EmeraldGlow else TextMuted, modifier = Modifier.size(28.dp))
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Stepper("kg", formatKg(log.weightKg), { onKg(-WEIGHT_STEP) }, { onKg(WEIGHT_STEP) })
-            Stepper("reps", log.reps.toString(), { onReps(-1) }, { onReps(1) })
+        Row(Modifier.fillMaxWidth()) {
+            Stepper("kg", formatKg(log.weightKg), { onKg(-WEIGHT_STEP) }, { onKg(WEIGHT_STEP) }, Modifier.weight(1f))
+            Stepper("reps", log.reps.toString(), { onReps(-1) }, { onReps(1) }, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onMinus, modifier = Modifier.size(48.dp)) { Text("−", fontSize = 22.sp, color = TextPrimary, modifier = Modifier.semantics { contentDescription = "Decrease $label" }) }
-        Column(Modifier.widthIn(min = 52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, fontWeight = FontWeight.Black, fontSize = 17.sp)
+private fun Stepper(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        IconButton(onClick = onMinus, modifier = Modifier.size(44.dp)) { Text("−", fontSize = 22.sp, color = TextPrimary, modifier = Modifier.semantics { contentDescription = "Decrease $label" }) }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, fontWeight = FontWeight.Black, fontSize = 16.sp, maxLines = 1)
             Text(label, color = Slate400, fontSize = 10.sp)
         }
-        IconButton(onClick = onPlus, modifier = Modifier.size(48.dp)) { Text("+", fontSize = 22.sp, color = TextPrimary, modifier = Modifier.semantics { contentDescription = "Increase $label" }) }
+        IconButton(onClick = onPlus, modifier = Modifier.size(44.dp)) { Text("+", fontSize = 22.sp, color = TextPrimary, modifier = Modifier.semantics { contentDescription = "Increase $label" }) }
     }
 }
 

@@ -112,7 +112,7 @@ fun StreakChip(streak: StreakResult, done: Int, total: Int, vacation: Boolean, l
         vacation -> "On vacation. Your streak is paused, nothing is lost."
         total == 0 -> "Nothing scheduled today."
         DayCompletion.of(done, total).qualifies -> "Today counts. Your streak is safe."
-        else -> "${DayCompletion.itemsToQualify(done, total)} more to keep your streak"
+        else -> null
     }
     val bestLine = when {
         streak.current >= streak.best && streak.best > 0 -> "Your best streak so far"
@@ -129,7 +129,7 @@ fun StreakChip(streak: StreakResult, done: Int, total: Int, vacation: Boolean, l
                 Icon(Icons.Default.Star, "Streak", tint = AmberFlame, modifier = Modifier.size(20.dp))
                 Text("${streak.current} day streak · Best ${streak.best}", color = AmberFlame, fontSize = 16.sp, fontWeight = FontWeight.Black)
             }
-            Text(message, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
             if (!vacation) Text(bestLine, color = Slate400, fontSize = 12.sp)
             Text("Level ${level.level} · ${level.name} · ${level.daysToNext} days to next", color = Slate400, fontSize = 12.sp,
                 modifier = Modifier.testTag("level_line"))
