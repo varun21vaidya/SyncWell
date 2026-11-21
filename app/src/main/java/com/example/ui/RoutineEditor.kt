@@ -40,11 +40,14 @@ fun scheduleSummary(t: RoutineTemplate): String = when (t.repeatType) {
 }
 
 @Composable
-private fun ItemDialog(title0: String, cat0: String, time0: String, onSave: (String, String, String?) -> Unit, onDismiss: () -> Unit) {
+private fun ItemDialog(title0: String, cat0: String, time0: String, onSave: (String, String, String?) -> Unit, onDismiss: () -> Unit,
+    onSaveTwice: ((String, String, String, String) -> Unit)? = null) {
+    var twice by remember { mutableStateOf(false) }
+    var time2 by remember { mutableStateOf("") }
     var title by remember { mutableStateOf(title0) }
     var cat by remember { mutableStateOf(cat0) }
     var time by remember { mutableStateOf(time0) }
-    val timeOk = time.isBlank() || TIME_REGEX.matches(time)
+    val timeOk = if (twice) TIME_REGEX.matches(time) && TIME_REGEX.matches(time2) else time.isBlank() || TIME_REGEX.matches(time)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Routine item", fontWeight = FontWeight.Black) },
@@ -52,13 +55,20 @@ private fun ItemDialog(title0: String, cat0: String, time0: String, onSave: (Str
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(title, { title = it }, label = { Text("Title") }, singleLine = true)
                 OutlinedTextField(time, { time = it }, label = { Text("Time HH:mm (optional)") }, singleLine = true, isError = !timeOk)
+                if (onSaveTwice != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(twice, { twice = it })
+                        Text("Twice a day (two items you tick separately)", fontSize = 12.sp)
+                    }
+                    if (twice) OutlinedTextField(time2, { time2 = it }, label = { Text("Second time HH:mm") }, singleLine = true, isError = !TIME_REGEX.matches(time2))
+                }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ROUTINE_CATEGORIES.forEach { c -> FilterChip(selected = cat == c, onClick = { cat = c }, label = { Text(c, fontSize = 11.sp) }) }
                 }
             }
         },
         confirmButton = {
-            TextButton(enabled = title.isNotBlank() && timeOk, onClick = { onSave(title.trim(), cat, time.ifBlank { null }) }) { Text("SAVE", color = Emerald600, fontWeight = FontWeight.Black) }
+            TextButton(enabled = title.isNotBlank() && timeOk, onClick = { if (twice && onSaveTwice != null) onSaveTwice(title.trim(), cat, time, time2) else onSave(title.trim(), cat, time.ifBlank { null }) }) { Text("SAVE", color = Emerald600, fontWeight = FontWeight.Black) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Slate400) } }
     )
@@ -194,7 +204,8 @@ fun ManageRoutinesScreen(viewModel: SyncWellViewModel, onBack: () -> Unit) {
             showNew = false; templateDialog = null
         })
     }
-    if (showAddToday) ItemDialog("", "OTHER", "", { t, c, time -> viewModel.addTodayItem(t, c, time); showAddToday = false }, { showAddToday = false })
+    if (showAddToday) ItemDialog("", "OTHER", "", { t, c, time -> viewModel.addTodayItem(t, c, time); showAddToday = false }, { showAddToday = false },
+        onSaveTwice = { t, c, t1, t2 -> viewModel.addTodayItem("$t (1/2)", c, t1); viewModel.addTodayItem("$t (2/2)", c, t2); showAddToday = false })
     editToday?.let { e ->
         ItemDialog(e.title, e.category, e.scheduledTime ?: "", { t, c, time ->
             viewModel.saveTodayItem(e.copy(title = t, category = c, scheduledTime = time)); editToday = null
@@ -256,7 +267,12 @@ private fun TemplateItemsEditor(viewModel: SyncWellViewModel, template: RoutineT
         val next = (items.maxOfOrNull { it.orderIndex } ?: 0) + 1
         viewModel.saveTemplateItem(RoutineTemplateItem(UUID.randomUUID().toString(), template.id, t, c, next, time))
         changed = true; adding = false
-    }, { adding = false })
+    }, { adding = false }, onSaveTwice = { t, c, t1, t2 ->
+        val next = (items.maxOfOrNull { it.orderIndex } ?: 0) + 1
+        viewModel.saveTemplateItem(RoutineTemplateItem(UUID.randomUUID().toString(), template.id, "$t (1/2)", c, next, t1))
+        viewModel.saveTemplateItem(RoutineTemplateItem(UUID.randomUUID().toString(), template.id, "$t (2/2)", c, next + 1, t2))
+        changed = true; adding = false
+    })
     editing?.let { e ->
         ItemDialog(e.title, e.category, e.scheduledTime ?: "", { t, c, time ->
             viewModel.saveTemplateItem(e.copy(title = t, category = c, scheduledTime = time)); changed = true; editing = null

@@ -30,6 +30,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DailyRoutineItem
+import com.example.domain.CategoryLineRule
+import com.example.domain.DayItem
+import com.example.domain.TimeOfDayRule
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 
@@ -213,26 +216,34 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
             } else {
                 // BUG 1 FIX: Sort uncompleted items at top, but use a stable list for LazyColumn
                 // to avoid jarring scroll jumps.
-                val sortedRoutineItems = remember(activeRoutineItems) {
-                    activeRoutineItems.sortedBy { it.orderIndex }
-                }
+                var wakeTime by remember { mutableStateOf("07:00") }
+                LaunchedEffect(Unit) { viewModel.getAppSettings()?.let { wakeTime = it.wakeTime } }
+                val dayItems = activeRoutineItems.map { DayItem(it.id, it.title, it.category, it.scheduledTime, it.isDone) }
+                val byId = activeRoutineItems.associateBy { it.id }
+                val groups = TimeOfDayRule.group(dayItems, wakeTime)
+                val categoryLine = CategoryLineRule.lines(dayItems).joinToString("  ·  ")
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
                         .padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(sortedRoutineItems, key = { it.id }) { item ->
-                        RoutineItemRow(
-                            item = item,
-                            onCardClick = { selectedRoutineItem = item },
-                            onCheckedChange = { viewModel.toggleRoutineItem(item) },
-                            viewModel = viewModel,
-                            onLogSupplementWithWarning = { name ->
-                                selectedSuppName = name
-                                showCircadianWarning = true
-                            }
-                        )
+                    item { Text(categoryLine, color = Slate400, fontSize = 11.sp) }
+                    groups.forEach { g ->
+                        item(key = "h-" + g.label) { Text(g.label.uppercase(), color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp) }
+                        items(g.items, key = { it.id }) { di ->
+                            val item = byId.getValue(di.id)
+                            RoutineItemRow(
+                                item = item,
+                                onCardClick = { selectedRoutineItem = item },
+                                onCheckedChange = { viewModel.toggleRoutineItem(item) },
+                                viewModel = viewModel,
+                                onLogSupplementWithWarning = { name ->
+                                    selectedSuppName = name
+                                    showCircadianWarning = true
+                                }
+                            )
+                        }
                     }
 
                     // Bottom: Migrated Dietary Supplements Chest section
@@ -433,65 +444,6 @@ fun RoutineItemRow(
                 }
             }
 
-            // Aligned Dietary Supplements directly below designated time blocks
-            val titleLower = item.title.lowercase()
-            val categoryUpper = item.category.uppercase()
-            val scheduledTimeStr = item.scheduledTime
-            val hour = scheduledTimeStr?.split(":")?.firstOrNull()?.toIntOrNull()
-
-            val isDietOrSupp = categoryUpper == "DIET" || titleLower.contains("supplement") || titleLower.contains("magnesium") || titleLower.contains("d3") || titleLower.contains("omega") || titleLower.contains("multivitamin") || titleLower.contains("oats") || titleLower.contains("breakfast") || titleLower.contains("lunch") || titleLower.contains("brunch") || titleLower.contains("dinner")
-
-            val hasBreakfastSupps = isDietOrSupp && ((hour != null && hour in 7..11) || titleLower.contains("breakfast") || titleLower.contains("morning"))
-            val hasLunchSupps = isDietOrSupp && ((hour != null && hour in 12..16) || titleLower.contains("lunch") || titleLower.contains("brunch") || titleLower.contains("d3") || titleLower.contains("k2"))
-            val hasBedtimeSupps = isDietOrSupp && ((hour != null && hour >= 20) || titleLower.contains("sleep") || titleLower.contains("night") || titleLower.contains("magnesium") || titleLower.contains("bedtime"))
-
-            if (hasBreakfastSupps || hasLunchSupps || hasBedtimeSupps) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = OledBorder, thickness = 1.dp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "ALIGNED SYSTEM SUPPLEMENTS:",
-                    color = Slate400,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                val matchedSupplements = when {
-                    hasBreakfastSupps -> listOf("Ace Blend Multivitamin" to "Breakfast Supp", "Naturaltein Omega-3" to "Dietary Fat Supp")
-                    hasLunchSupps -> listOf("Carbamide Forte D3+K2" to "Post-Lunch Supp")
-                    else -> listOf("Magnesium Glycinate" to "Bedtime Supp")
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    matchedSupplements.forEach { (name, label) ->
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    viewModel.addSupplement(name) {
-                                        onLogSupplementWithWarning(name)
-                                    }
-                                },
-                            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
-                            border = BorderStroke(1.dp, OledBorder),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TextPrimary)
-                                Text(label, color = Slate400, fontSize = 8.sp)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -695,71 +647,6 @@ fun RoutineDetailView(
             }
         }
 
-        // Aligned Dietary Supplements in Detail View
-        val titleLower = item.title.lowercase()
-        val categoryUpper = item.category.uppercase()
-        val scheduledTimeStr = item.scheduledTime
-        val hour = scheduledTimeStr?.split(":")?.firstOrNull()?.toIntOrNull()
-
-        val isDietOrSupp = categoryUpper == "DIET" || titleLower.contains("supplement") || titleLower.contains("magnesium") || titleLower.contains("d3") || titleLower.contains("omega") || titleLower.contains("multivitamin") || titleLower.contains("oats") || titleLower.contains("breakfast") || titleLower.contains("lunch") || titleLower.contains("brunch") || titleLower.contains("dinner")
-
-        val hasBreakfastSupps = isDietOrSupp && ((hour != null && hour in 7..11) || titleLower.contains("breakfast") || titleLower.contains("morning"))
-        val hasLunchSupps = isDietOrSupp && ((hour != null && hour in 12..16) || titleLower.contains("lunch") || titleLower.contains("brunch") || titleLower.contains("d3") || titleLower.contains("k2"))
-        val hasBedtimeSupps = isDietOrSupp && ((hour != null && hour >= 20) || titleLower.contains("sleep") || titleLower.contains("night") || titleLower.contains("magnesium") || titleLower.contains("bedtime"))
-
-        if (hasBreakfastSupps || hasLunchSupps || hasBedtimeSupps) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(20.dp),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "ALIGNED SYSTEM SUPPLEMENTS",
-                        color = Slate400,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-
-                    val matchedSupplements = when {
-                        hasBreakfastSupps -> listOf("Ace Blend Multivitamin" to "Breakfast Supp", "Naturaltein Omega-3" to "Dietary Fat Supp")
-                        hasLunchSupps -> listOf("Carbamide Forte D3+K2" to "Post-Lunch Supp")
-                        else -> listOf("Magnesium Glycinate" to "Bedtime Supp")
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        matchedSupplements.forEach { (name, label) ->
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        viewModel.addSupplement(name) {
-                                            onLogSupplementWithWarning(name)
-                                        }
-                                    },
-                                colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
-                                border = BorderStroke(1.dp, OledBorder),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(name.split(" ").last(), fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
-                                    Text(label, color = Slate400, fontSize = 10.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
