@@ -156,6 +156,16 @@ class BadgeRulesTest {
         } finally { Locale.setDefault(saved) }
     }
 
+    @Test fun stampCopyNamesTheMedalAndNeverGuilts() {
+        val d25 = BadgeRules.ALL.single { it.id == "DAYS_25" }
+        assertEquals("Stamped: 25 good days", BadgeRules.stampTitle(d25))
+        assertEquals("You showed up for yourself 25 times.", BadgeRules.stampBody(d25))
+        BadgeRules.ALL.forEach {
+            assertTrue(BadgeRules.stampTitle(it).startsWith("Stamped: "))
+            assertFalse(BadgeRules.stampBody(it).contains("Locked", ignoreCase = true))
+        }
+    }
+
     @Test fun longestRunHandlesGapsAndDuplicates() {
         assertEquals(3, BadgeRules.longestRun(listOf("2026-11-01", "2026-11-02", "2026-11-03", "2026-11-05", "2026-11-05")))
         assertEquals(0, BadgeRules.longestRun(emptyList()))

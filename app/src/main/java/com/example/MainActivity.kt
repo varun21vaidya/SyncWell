@@ -40,6 +40,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.domain.LinkEvent
+import com.example.ui.BadgeStampOverlay
+import com.example.ui.ShareCard
 import com.example.ui.AnalyticsScreen
 import com.example.ui.HomeScreen
 import com.example.ui.OnboardingScreen
@@ -161,14 +163,10 @@ class MainActivity : ComponentActivity() {
             }
 
                     unlockedBadge?.let { b ->
-                        AlertDialog(
-                            onDismissRequest = { viewModel.dismissUnlock() },
-                            title = { Text("Achievement unlocked", fontWeight = FontWeight.Black) },
-                            text = { Text("${b.title}: ${b.how}") },
-                            confirmButton = { TextButton(onClick = { viewModel.dismissUnlock() }) { Text("NICE", color = Emerald600, fontWeight = FontWeight.Black) } },
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
-                        )
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        key(b.id) {
+                            BadgeStampOverlay(b, onShare = { ShareCard.shareBadge(context, b) }, onKeepGoing = { viewModel.dismissUnlock() })
+                        }
                     }
 
                     linkPrompt?.let { p ->

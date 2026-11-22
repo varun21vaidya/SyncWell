@@ -27,10 +27,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.PathParser
@@ -105,21 +105,21 @@ private fun rosettePath(rotationDeg: Double = 0.0): Path = Path().apply {
     close()
 }
 
-private fun ribbonTails(): Pair<Path, Path> {
-    val left = Path().apply { moveTo(30f, 58f); lineTo(48f, 62f); lineTo(46f, 99f); lineTo(39f, 91f); lineTo(31f, 99f); close() }
-    val right = Path().apply { moveTo(70f, 58f); lineTo(52f, 62f); lineTo(54f, 99f); lineTo(61f, 91f); lineTo(69f, 99f); close() }
-    return left to right
+/** The shapes every medal shares, built once (paths do not depend on the badge). */
+internal class MedalPaths {
+    val rosette = rosettePath()
+    val rosetteTurned = rosettePath(11.25)
+    val tailLeft = Path().apply { moveTo(30f, 58f); lineTo(48f, 62f); lineTo(46f, 99f); lineTo(39f, 91f); lineTo(31f, 99f); close() }
+    val tailRight = Path().apply { moveTo(70f, 58f); lineTo(52f, 62f); lineTo(54f, 99f); lineTo(61f, 91f); lineTo(69f, 99f); close() }
+    val banner = Path().apply { moveTo(17f, 59f); lineTo(83f, 59f); lineTo(78f, 65f); lineTo(83f, 71f); lineTo(17f, 71f); lineTo(22f, 65f); close() }
+    val depth = Path().apply { moveTo(0f, 0f); lineTo(100f, 0f); lineTo(0f, 100f); close() } // the top-left half, lit
 }
 
-private fun bannerPath() = Path().apply {
-    moveTo(17f, 59f); lineTo(83f, 59f); lineTo(78f, 65f); lineTo(83f, 71f); lineTo(17f, 71f); lineTo(22f, 65f); close()
-}
-
-private fun DrawScope.drawIcon(icon: BadgeIcon, color: Color, size: Float, centerX: Float, centerY: Float) {
+private fun DrawScope.drawIcon(icon: BadgeIcon, color: Color, box: Float, center: Offset) {
     val shapes = iconShapes(icon).map { (d, stroke) -> PathParser().parsePathString(d).toPath() to stroke }
     withTransform({
-        translate(centerX - size / 2f, centerY - size / 2f)
-        scale(size / 24f, size / 24f, Offset.Zero)
+        translate(center.x - box / 2f, center.y - box / 2f)
+        scale(box / 24f, box / 24f, Offset.Zero)
     }) {
         shapes.forEach { (path, stroke) ->
             if (stroke) drawPath(path, color, style = Stroke(width = 2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
@@ -129,22 +129,56 @@ private fun DrawScope.drawIcon(icon: BadgeIcon, color: Color, size: Float, cente
 }
 
 /**
+ * Draws one medal fitted to the current draw size. [shineP] null draws no shine; otherwise it places the white band:
+ * 0 is left of the medal, 1 is right of it, above 1 is off the medal. Used by [BadgeMedal] and by the share image.
+ */
+internal fun DrawScope.drawMedal(badge: Badge, paths: MedalPaths, shineP: Float?) {
+    val colors = tierColors(badge.tier)
+    val u = size.minDimension / 100f
+    scale(u, u, pivot = Offset.Zero) {
+        drawPath(paths.tailLeft, colors.dark); drawPath(paths.tailRight, colors.dark)
+        if (badge.doubleRosette) drawPath(paths.rosetteTurned, colors.dark)
+        drawPath(paths.rosette, colors.base)
+        clipPath(paths.rosette) { drawPath(paths.depth, colors.light.copy(alpha = 0.5f)) }
+        val c = Offset(50f, 50f)
+        drawCircle(colors.dark, 34f, c); drawCircle(colors.light, 31f, c); drawCircle(colors.base, 28f, c)
+        drawCircle(colors.text, 25f, c, style = Stroke(width = 1.4f, cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, 3.5f), 0f)))
+        val bannerText = badge.banner
+        if (bannerText == null) drawIcon(badge.icon, colors.deepest, 30f, c)
+        else {
+            drawIcon(badge.icon, colors.deepest, 24f, Offset(50f, 43f))
+            drawPath(paths.banner, colors.deepest)
+            drawIntoCanvas { cv ->
+                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = colors.text.toArgb(); textSize = 7f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true
+                }
+                cv.nativeCanvas.drawText(bannerText, 50f, 67.4f, paint)
+            }
+        }
+        if (shineP != null) {
+            clipPath(paths.rosette) {
+                rotate(22f, pivot = Offset(50f, 50f)) {
+                    drawRect(Color.White.copy(alpha = 0.4f), topLeft = Offset(-30f + shineP * 160f, -20f), size = Size(14f, 140f))
+                }
+            }
+        }
+    }
+}
+
+/**
  * One medal, drawn as a vector (no image files). Earned medals shine; locked ones are the same medal at 22% opacity
- * with a small lock chip. [shineProgress] reads a value in 0..1: the band sweeps left to right, and anything above 1 is off the medal.
+ * with a small lock chip. [shineOverride] lets a caller drive the band itself (the stamp popup sweeps it once);
+ * under reduced motion the band is drawn still.
  */
 @Composable
-fun BadgeMedal(badge: Badge, earned: Boolean, size: Dp, modifier: Modifier = Modifier, staggerMs: Int = 0) {
+fun BadgeMedal(
+    badge: Badge, earned: Boolean, size: Dp, modifier: Modifier = Modifier, staggerMs: Int = 0,
+    shineOverride: (() -> Float)? = null
+) {
     val reduced = LocalReducedMotion.current
-    val colors = remember(badge.tier) { tierColors(badge.tier) }
-    val rosette = remember { rosettePath() }
-    val rosetteTurned = remember { rosettePath(11.25) }
-    val tails = remember { ribbonTails() }
-    val banner = remember { bannerPath() }
-    val depth = remember { Path().apply { moveTo(0f, 0f); lineTo(100f, 0f); lineTo(0f, 100f); close() } }
-
-    val shine = if (earned && !reduced) {
-        val t = rememberInfiniteTransition(label = "shine")
-        t.animateFloat(
+    val paths = remember { MedalPaths() }
+    val sweep = if (earned && !reduced && shineOverride == null) {
+        rememberInfiniteTransition(label = "shine").animateFloat(
             initialValue = 0f, targetValue = 1f,
             animationSpec = infiniteRepeatable(
                 animation = keyframes { durationMillis = 3200; 0f at 0 using LinearEasing; 1f at 1600 using LinearEasing; 1f at 3200 },
@@ -158,39 +192,8 @@ fun BadgeMedal(badge: Badge, earned: Boolean, size: Dp, modifier: Modifier = Mod
         contentAlignment = Alignment.BottomEnd
     ) {
         Canvas(Modifier.size(size).alpha(if (earned) 1f else 0.22f)) {
-            val u = this.size.minDimension / 100f
-            scale(u, u, pivot = Offset.Zero) {
-                drawPath(tails.first, colors.dark); drawPath(tails.second, colors.dark)
-                if (badge.doubleRosette) drawPath(rosetteTurned, colors.dark)
-                drawPath(rosette, colors.base)
-                clipPath(rosette) { drawPath(depth, colors.light.copy(alpha = 0.5f)) }
-                val c = Offset(50f, 50f)
-                drawCircle(colors.dark, 34f, c); drawCircle(colors.light, 31f, c); drawCircle(colors.base, 28f, c)
-                drawCircle(
-                    colors.text, 25f, c,
-                    style = Stroke(width = 1.4f, cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(0.1f, 3.5f), 0f))
-                )
-                if (badge.banner == null) drawIcon(badge.icon, colors.deepest, 30f, 50f, 50f)
-                else {
-                    drawIcon(badge.icon, colors.deepest, 24f, 50f, 43f)
-                    drawPath(banner, colors.deepest)
-                    drawIntoCanvas { cv ->
-                        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = colors.text.toArgb(); textSize = 7f; textAlign = android.graphics.Paint.Align.CENTER; isFakeBoldText = true
-                        }
-                        cv.nativeCanvas.drawText(badge.banner, 50f, 67.4f, paint)
-                    }
-                }
-                if (earned) {
-                    // static position under reduced motion, otherwise the sweep: 0 = left of the medal, 1 = right of it
-                    val p = shine?.value ?: 0.3f
-                    clipPath(rosette) {
-                        rotate(22f, pivot = Offset(50f, 50f)) {
-                            drawRect(Color.White.copy(alpha = 0.4f), topLeft = Offset(-30f + p * 160f, -20f), size = Size(14f, 140f))
-                        }
-                    }
-                }
-            }
+            val p = if (!earned) null else if (reduced) 0.3f else shineOverride?.invoke() ?: sweep?.value ?: 0.3f
+            drawMedal(badge, paths, p)
         }
         if (!earned) LockChip(size * 0.3f)
     }

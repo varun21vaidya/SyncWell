@@ -114,6 +114,12 @@ object BadgeRules {
     /** The medal to show as "Next stamp": the unearned one closest to done, the first in the catalogue when none has progress. */
     fun nextStamp(states: List<BadgeState>): BadgeState? = states.filter { !it.earned }.maxWithOrNull(compareBy { it.fraction })
 
+    /** Popup and share-image wording. */
+    fun stampTitle(b: Badge) = "Stamped: ${b.title}"
+
+    fun stampBody(b: Badge) =
+        if (b.group == BadgeGroup.GOOD_DAYS) "You showed up for yourself ${b.target} times." else "${b.how}. That is worth a stamp."
+
     /** "12 / 25 good days" for the Home line and the medal sheet. */
     fun progressLine(s: BadgeState) = "${s.current} / ${s.target} ${s.badge.unit}"
 
