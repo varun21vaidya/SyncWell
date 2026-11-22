@@ -656,6 +656,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
             // Writes the day's percent and the statistics cache
             AnalyticsComputationService.recalculateDayCache(dao, dateKey).onFailure { _message.tryEmit("Could not update stats") }
             TodayWidget.refresh(getApplication())
+
+            // 80% reached: a small "Today counts" once a day
+            if (TodayCounts.shouldShow(currentItems.count { it.isDone }, currentItems.size, prefs.getString("counts_toast_date", null), dateKey, _isVacationActive.value)) {
+                prefs.edit().putString("counts_toast_date", dateKey).apply()
+                _message.tryEmit(TodayCounts.MESSAGE)
+            }
         }
     }
 

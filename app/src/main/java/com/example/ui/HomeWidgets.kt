@@ -10,7 +10,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -202,12 +210,24 @@ fun UpNextCard(item: DayItem?, onDone: (DayItem) -> Unit) {
                 }
             }
             if (item != null) {
+                val haptic = LocalHapticFeedback.current
+                val reduced = LocalReducedMotion.current
+                val scope = rememberCoroutineScope()
+                var justDone by remember { mutableStateOf<String?>(null) }
+                val checkScale by animateFloatAsState(if (justDone == item.id) 1f else 0.4f, spring(dampingRatio = 0.45f), label = "check")
                 Button(
-                    onClick = { onDone(item) },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // light
+                        if (reduced) onDone(item)
+                        else scope.launch { justDone = item.id; delay(320); onDone(item); justDone = null } // let the check show first
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = Progress),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("up_next_done")
-                ) { Text("Done", fontWeight = FontWeight.Bold, color = OnProgress) }
+                ) {
+                    if (justDone == item.id) Icon(Icons.Default.Check, "Done", tint = OnProgress, modifier = Modifier.size(20.dp).graphicsLayer { scaleX = checkScale; scaleY = checkScale })
+                    else Text("Done", fontWeight = FontWeight.Bold, color = OnProgress)
+                }
             }
         }
     }

@@ -18,6 +18,12 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -363,6 +369,12 @@ fun RoutineItemRow(
     onLogSupplementWithWarning: (String) -> Unit,
     habitStreak: Int = 0
 ) {
+    val haptic = LocalHapticFeedback.current
+    val reducedMotion = LocalReducedMotion.current
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(item.isDone) {
+        if (item.isDone && !reducedMotion) { pulse.snapTo(0.7f); pulse.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium)) }
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -386,19 +398,19 @@ fun RoutineItemRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Checkbox Icon with 36dp Touch Target
+                    // Checkbox: a light haptic and a small pulse when it becomes done
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clickable { onCheckedChange() }
+                            .size(44.dp)
+                            .clickable { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onCheckedChange() }
                             .testTag("toggle_checkbox_${item.orderIndex}"),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Completion Box",
-                            tint = if (item.isDone) EmeraldGlow else TextMuted,
-                            modifier = Modifier.size(22.dp)
+                            tint = if (item.isDone) Progress else TextMuted,
+                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = pulse.value; scaleY = pulse.value }
                         )
                     }
 
@@ -406,10 +418,9 @@ fun RoutineItemRow(
                         // Title
                         Text(
                             text = item.title,
-                            color = if (item.isDone) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface,
+                            color = if (item.isDone) TextMuted else TextPrimary, // muted, never struck through
                             fontWeight = if (item.isDone) FontWeight.Medium else FontWeight.Bold,
-                            fontSize = 14.sp,
-                            textDecoration = if (item.isDone) TextDecoration.LineThrough else TextDecoration.None
+                            fontSize = 14.sp
                         )
 
                         // Timing & Category
