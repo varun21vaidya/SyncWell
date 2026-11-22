@@ -63,14 +63,14 @@ private fun ItemDialog(title0: String, cat0: String, time0: String, onSave: (Str
                     if (twice) OutlinedTextField(time2, { time2 = it }, label = { Text("Second time HH:mm") }, singleLine = true, isError = !TIME_REGEX.matches(time2))
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ROUTINE_CATEGORIES.forEach { c -> FilterChip(selected = cat == c, onClick = { cat = c }, label = { Text(c, fontSize = 11.sp) }) }
+                    ROUTINE_CATEGORIES.forEach { c -> FilterChip(selected = cat == c, onClick = { cat = c }, label = { Text(categoryLabel(c), fontSize = 11.sp) }) }
                 }
             }
         },
         confirmButton = {
-            TextButton(enabled = title.isNotBlank() && timeOk, onClick = { if (twice && onSaveTwice != null) onSaveTwice(title.trim(), cat, time, time2) else onSave(title.trim(), cat, time.ifBlank { null }) }) { Text("SAVE", color = Emerald600, fontWeight = FontWeight.Black) }
+            TextButton(enabled = title.isNotBlank() && timeOk, onClick = { if (twice && onSaveTwice != null) onSaveTwice(title.trim(), cat, time, time2) else onSave(title.trim(), cat, time.ifBlank { null }) }) { Text("Save", color = Emerald600, fontWeight = FontWeight.Black) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Slate400) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Slate400) } }
     )
 }
 
@@ -111,9 +111,9 @@ private fun TemplateDialog(initial: RoutineTemplate?, onSave: (RoutineTemplate) 
                     daysOfWeek = days.sorted().joinToString(",", "[", "]"),
                     onceDate = if (repeat == "ONCE") date else null, isStarter = initial?.isStarter ?: false
                 ))
-            }) { Text("SAVE", color = Emerald600, fontWeight = FontWeight.Black) }
+            }) { Text("Save", color = Emerald600, fontWeight = FontWeight.Black) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = Slate400) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Slate400) } }
     )
 }
 
@@ -216,8 +216,8 @@ fun ManageRoutinesScreen(viewModel: SyncWellViewModel, onBack: () -> Unit) {
             onDismissRequest = { deleteTemplate = null },
             title = { Text("Delete \"${t.name}\"?") },
             text = { Text("Future days will no longer include it. Past days are not changed.") },
-            confirmButton = { TextButton(onClick = { viewModel.deleteRoutineTemplate(t.id); deleteTemplate = null }) { Text("DELETE", color = RoseCrimson) } },
-            dismissButton = { TextButton(onClick = { deleteTemplate = null }) { Text("CANCEL") } }
+            confirmButton = { TextButton(onClick = { viewModel.deleteRoutineTemplate(t.id); deleteTemplate = null }) { Text("Delete", color = RoseCrimson) } },
+            dismissButton = { TextButton(onClick = { deleteTemplate = null }) { Text("Cancel") } }
         )
     }
     if (confirmReset) {
@@ -225,8 +225,8 @@ fun ManageRoutinesScreen(viewModel: SyncWellViewModel, onBack: () -> Unit) {
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset starter routines?") },
             text = { Text("Rebuilds the starter routines and discards your edits to them. Routines you created stay. Today's list is rebuilt.") },
-            confirmButton = { TextButton(onClick = { viewModel.resetRoutinesToDefaults(); confirmReset = false }) { Text("RESET", color = RoseCrimson) } },
-            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("CANCEL") } }
+            confirmButton = { TextButton(onClick = { viewModel.resetRoutinesToDefaults(); confirmReset = false }) { Text("Reset", color = RoseCrimson) } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } }
         )
     }
 }
@@ -283,8 +283,8 @@ private fun TemplateItemsEditor(viewModel: SyncWellViewModel, template: RoutineT
             onDismissRequest = { askApply = false },
             title = { Text("Apply to today?") },
             text = { Text("Rebuild today's list with these changes? Items you already ticked stay ticked. Future days use the changes either way.") },
-            confirmButton = { TextButton(onClick = { viewModel.rebuildTodayRoutine(); askApply = false; onBack() }) { Text("APPLY TO TODAY", color = Emerald600, fontWeight = FontWeight.Black) } },
-            dismissButton = { TextButton(onClick = { askApply = false; onBack() }) { Text("FUTURE DAYS ONLY", color = Slate400) } }
+            confirmButton = { TextButton(onClick = { viewModel.rebuildTodayRoutine(); askApply = false; onBack() }) { Text("Apply to today", color = Emerald600, fontWeight = FontWeight.Black) } },
+            dismissButton = { TextButton(onClick = { askApply = false; onBack() }) { Text("Future days only", color = Slate400) } }
         )
     }
 }

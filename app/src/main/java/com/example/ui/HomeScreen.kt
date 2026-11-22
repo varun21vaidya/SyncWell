@@ -36,7 +36,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
+fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) {
     val activeRoutineItems by viewModel.activeRoutineItems.collectAsState()
     val todayWaterLogs by viewModel.todayWaterLogs.collectAsState()
     val todayAnalytics by viewModel.todayAnalytics.collectAsState()
@@ -95,13 +95,13 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
         }
 
         if (activeRoutineItems.isEmpty()) {
-            EmptyDayCard { onNavigateToTab(1) }
+            EmptyDayCard { onNavigate(Destination.ROUTINE) }
         } else {
             DayRingCard(
                 percent = DayCompletion.of(completedCount, activeRoutineItems.size).percent,
                 done = completedCount, total = activeRoutineItems.size,
                 categories = CategoryRings.of(dayItems), waterMl = totalWaterMl, waterGoalMl = waterGoalMl,
-                onClick = { onNavigateToTab(1) }
+                onClick = { onNavigate(Destination.ROUTINE) }
             )
         }
         StreakChip(activeStreak, completedCount, activeRoutineItems.size, isVacationActive, level, weekMarks)
@@ -111,7 +111,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 activeRoutineItems.firstOrNull { it.id == next.id }?.let { viewModel.toggleRoutineItem(it) }
             }
         }
-        GoalsStrip(goals, goalWeekCounts) { onNavigateToTab(4) }
+        GoalsStrip(goals, goalWeekCounts) { onNavigate(Destination.GOALS) }
 
         // Two Column Split: Hydration & Study Time
         Row(
@@ -134,7 +134,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "HYDRATION",
+                            text = "Hydration",
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -218,14 +218,14 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                 modifier = Modifier
                     .weight(1f)
                     .defaultMinSize(minHeight = 155.dp)
-                    .clickable { onNavigateToTab(3) }, // Navigates to Focus Tab
+                    .clickable { onNavigate(Destination.FOCUS) }, // Navigates to Focus Tab
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.dp, OledBorder)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "STUDY FOCUS",
+                        text = "Study focus",
                         color = Slate400,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -256,7 +256,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.clickable { onNavigateToTab(3) }
+                        modifier = Modifier.clickable { onNavigate(Destination.FOCUS) }
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -284,7 +284,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigateToTab: (Int) -> Unit) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "TARGET BODY COMPOSITION",
+                    text = "Target body composition",
                     fontWeight = FontWeight.Black,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.primary,

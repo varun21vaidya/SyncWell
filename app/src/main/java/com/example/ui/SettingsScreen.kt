@@ -44,14 +44,14 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         // App Header
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "SYSTEM PREFERENCES & ARCHIVES",
+                text = "System preferences & archives",
                 color = Slate400,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "Settings Tree",
+                text = "Settings",
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Black
@@ -79,7 +79,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                 ) {
                     Column {
                         Text(
-                            text = "FITNESS & BODY TARGETS",
+                            text = "Fitness & body targets",
                             color = Slate400,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -220,7 +220,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "VACATION MODE CONTROLLER",
+                    text = "Vacation mode controller",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -279,18 +279,18 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("STREAK FREEZE", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("Streak freeze", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(
                     "One protected day a week. If today is a day you cannot do your routine, freeze it and your streak simply pauses, like vacation but for a single day. It only applies to today and never changes past days.",
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
                 )
                 when {
                     freeze.frozenToday -> OutlinedButton(onClick = { viewModel.cancelFreezeToday() }, modifier = Modifier.testTag("cancel_freeze_btn")) {
-                        Text("TODAY IS FROZEN · UNDO", color = EmeraldGlow, fontWeight = FontWeight.Black)
+                        Text("Today is frozen · undo", color = EmeraldGlow, fontWeight = FontWeight.Black)
                     }
                     freeze.canFreeze -> Button(onClick = { viewModel.useFreezeToday() }, modifier = Modifier.testTag("use_freeze_btn"),
                         colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow)) {
-                        Text("FREEZE TODAY", color = OledBlack, fontWeight = FontWeight.Black)
+                        Text("Freeze today", color = OledBlack, fontWeight = FontWeight.Black)
                     }
                     else -> Text("This week's freeze is already used.", color = Slate400, fontSize = 12.sp)
                 }
@@ -306,7 +306,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("WORKOUT REST TIMER", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("Workout rest timer", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Rest timer", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                     Switch(
@@ -339,7 +339,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("GENTLE REMINDERS", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("Gentle reminders", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(
                     "A morning plan and, when a streak is at stake, an evening nudge: never more than 2 a day. After 2 days away you get one welcome-back note (at most 2 per break). Silent on vacation, between bedtime and wake time, and once the day is at 80%.",
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
@@ -365,7 +365,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             border = BorderStroke(1.dp, OledBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("ASK TO TICK MY ROUTINE", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("Ask to tick my routine", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(
                     "After these events SyncWell asks once whether to tick the matching routine item. It never ticks anything on its own.",
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), fontSize = 12.sp, lineHeight = 16.sp
@@ -398,7 +398,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "CLOUD BACKUP SNAPSHOTS",
+                    text = "Cloud backup snapshots",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -506,7 +506,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "GOOGLE ACCOUNT",
+                    text = "Google account",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -578,7 +578,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "MAINTENANCE & RECOVERY",
+                    text = "Maintenance & recovery",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -621,8 +621,8 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                 onDismissRequest = { rerunStage = 0 },
                 title = { Text("Re-run setup?", fontWeight = FontWeight.Black) },
                 text = { Text("This rebuilds the starter routines and discards your edits to them. Routines you created stay.") },
-                confirmButton = { TextButton(onClick = { rerunStage = 2 }) { Text("CONTINUE", color = RoseCrimson, fontWeight = FontWeight.Black) } },
-                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("CANCEL", color = TextMuted) } },
+                confirmButton = { TextButton(onClick = { rerunStage = 2 }) { Text("Continue", color = RoseCrimson, fontWeight = FontWeight.Black) } },
+                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("Cancel", color = TextMuted) } },
                 shape = RoundedCornerShape(20.dp),
                 containerColor = SurfaceTier1
             )
@@ -644,7 +644,7 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("CANCEL", color = TextMuted) } },
+                dismissButton = { TextButton(onClick = { rerunStage = 0 }) { Text("Cancel", color = TextMuted) } },
                 shape = RoundedCornerShape(20.dp),
                 containerColor = SurfaceTier1
             )
@@ -662,12 +662,12 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
                             showResetDialog = false
                         }
                     ) {
-                        Text("RESET NOW", color = RoseCrimson, fontWeight = FontWeight.Black)
+                        Text("Reset now", color = RoseCrimson, fontWeight = FontWeight.Black)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showResetDialog = false }) {
-                        Text("CANCEL", color = TextMuted)
+                        Text("Cancel", color = TextMuted)
                     }
                 },
                 shape = RoundedCornerShape(20.dp),

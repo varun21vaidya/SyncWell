@@ -98,7 +98,7 @@ fun SetupQuestionsForm(
             TextButton(enabled = customName.isNotBlank() && customTimeOk, onClick = {
                 vitamins = vitamins.filter { it.name != customName.trim() } + VitaminChoice(customName.trim(), customTime.ifBlank { null })
                 customName = ""; customTime = ""
-            }) { Text("ADD") }
+            }) { Text("Add") }
         }
 
         Button(

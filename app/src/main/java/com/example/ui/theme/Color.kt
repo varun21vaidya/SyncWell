@@ -13,7 +13,7 @@ val Border        = Color(0xFF22304D)  // 1 dp card border
 
 val TextPrimary   = Color(0xFFE8EEF7)  // Titles, numbers (soft white, less OLED glare)
 val TextSecondary = Color(0xFF9AA8BF)  // Labels, captions (about 7.6:1 on Surface1)
-val TextMuted     = Color(0xFF64738C)  // Hints, day letters
+val TextMuted     = Color(0xFF7A89A2)  // Hints, day letters (plan said #64738C, which is only 3.9:1 on Surface1; this is 5.2:1)
 
 val Progress      = Color(0xFF3DDC97)  // Done, rings, primary button
 val OnProgress    = Color(0xFF05291A)  // Text and icons on Progress

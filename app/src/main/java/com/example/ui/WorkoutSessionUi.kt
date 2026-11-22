@@ -108,7 +108,7 @@ fun ActiveSessionContent(
                 // Title and PAUSED get a full-width line of their own; beside the timer and two buttons they were squeezed to nothing
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(NextSplitRule.splitOf(session.dayType)?.title ?: session.dayType, color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    if (clock.isPaused) Text("PAUSED", color = AmberFlame, fontWeight = FontWeight.Black, fontSize = 11.sp, maxLines = 1, softWrap = false, modifier = Modifier.testTag("paused_label"))
+                    if (clock.isPaused) Text("Paused", color = AmberFlame, fontWeight = FontWeight.Black, fontSize = 11.sp, maxLines = 1, softWrap = false, modifier = Modifier.testTag("paused_label"))
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(formatClock(elapsed), fontSize = 30.sp, fontWeight = FontWeight.Black, maxLines = 1, color = if (clock.isPaused) TextSecondary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f).testTag("session_timer"))
@@ -355,7 +355,7 @@ fun WorkoutSummaryContent(s: WorkoutSummary, onDone: () -> Unit, modifier: Modif
         s.cardio?.let { c ->
             item {
                 SummaryCard {
-                    SectionLabel("CARDIO")
+                    SectionLabel("Cardio")
                     Text("${c.type.lowercase().replaceFirstChar { it.uppercase() }} · ${c.minutes} min · ${c.effort.lowercase()}", fontWeight = FontWeight.Bold)
                     val extra = listOfNotNull(c.distanceKm?.let { "${formatKg(it)} km" }, c.inclinePct?.let { "${formatKg(it)}% incline" })
                     if (extra.isNotEmpty()) Text(extra.joinToString(" · "), color = Slate400, fontSize = 12.sp)
@@ -364,7 +364,7 @@ fun WorkoutSummaryContent(s: WorkoutSummary, onDone: () -> Unit, modifier: Modif
         }
         item {
             SummaryCard {
-                SectionLabel("PERSONAL BESTS")
+                SectionLabel("Personal bests")
                 if (s.personalBests.isEmpty()) Text("No new bests this time. Showing up counts.", color = TextSecondary, fontSize = 13.sp)
                 s.personalBests.forEach { b ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -376,7 +376,7 @@ fun WorkoutSummaryContent(s: WorkoutSummary, onDone: () -> Unit, modifier: Modif
         }
         item {
             SummaryCard {
-                SectionLabel("NEXT TIME")
+                SectionLabel("Next time")
                 if (s.nextTargets.isEmpty()) Text("Log sets to get next-time targets.", color = TextSecondary, fontSize = 13.sp)
                 s.nextTargets.forEach { t ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -388,7 +388,7 @@ fun WorkoutSummaryContent(s: WorkoutSummary, onDone: () -> Unit, modifier: Modif
         }
         item {
             SummaryCard {
-                SectionLabel("GYM STREAK")
+                SectionLabel("Gym streak")
                 Text("${s.streak.currentWeeks} wk streak · Best ${s.streak.bestWeeks} wk", fontWeight = FontWeight.Black, fontSize = 16.sp, color = AmberFlame)
                 Text("This week ${s.streak.thisWeekCount} of ${s.streak.target}", color = Slate400, fontSize = 12.sp)
             }

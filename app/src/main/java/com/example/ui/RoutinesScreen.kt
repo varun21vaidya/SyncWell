@@ -130,7 +130,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
             ) {
                 Column {
                     Text(
-                        text = "DAILY HABITS CHECKLIST",
+                        text = "Daily habits checklist",
                         color = Slate400,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -161,7 +161,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { showManage = true }) { Text("MANAGE ROUTINES", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                TextButton(onClick = { showManage = true }) { Text("Manage routines", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { showHelp = true }) { Icon(Icons.Default.Info, contentDescription = "How routines work", tint = Slate400) }
             }
@@ -265,7 +265,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                         ) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    text = "DIETARY SUPPLEMENTS CHEST",
+                                    text = "Dietary supplements chest",
                                     color = Slate400,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -447,7 +447,7 @@ fun RoutineItemRow(
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = item.category,
+                                    text = categoryLabel(item.category),
                                     color = textColor,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
@@ -592,7 +592,7 @@ fun RoutineDetailView(
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "AESTHETIC DESCRIPTION",
+                    text = "Aesthetic description",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Slate400,
@@ -608,7 +608,7 @@ fun RoutineDetailView(
                 HorizontalDivider(color = OledBorder, thickness = 1.dp)
 
                 Text(
-                    text = "LONG-FORM PROCESS GUIDE",
+                    text = "Long-form process guide",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Slate400,
@@ -654,11 +654,11 @@ fun RoutineDetailView(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("FREQUENCY DETAILS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400)
+                        Text("Frequency details", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400)
                         Text(info.frequency, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("OUTCOME TARGETS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400)
+                        Text("Outcome targets", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400)
                         Text(info.targetMetrics, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 2.dp))
                     }
                 }

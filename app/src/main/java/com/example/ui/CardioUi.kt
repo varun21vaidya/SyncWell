@@ -59,7 +59,7 @@ fun CardioCard(draft: CardioLine?, onChange: (CardioLine?) -> Unit, modifier: Mo
         )
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("CARDIO (OPTIONAL)")
+                SectionLabel("Cardio (optional)")
                 TextButton(onClick = { open = false; minutes = 0; timerRunning = false; timerSeconds = 0; publish() }, modifier = Modifier.height(48.dp)) {
                     Text("Remove", color = Slate400)
                 }

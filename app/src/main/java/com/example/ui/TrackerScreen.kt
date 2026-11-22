@@ -60,7 +60,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = "MULTI-CATEGORY FOCUS ENGINE",
+                text = "Multi-category focus engine",
                 color = Slate400,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -210,7 +210,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "TAG A TASK (OPTIONAL)",
+                            text = "Tag a task (optional)",
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -448,7 +448,7 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "TODAY'S CONSECRATED FOCUS LOGS",
+                    text = "Today's consecrated focus logs",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,

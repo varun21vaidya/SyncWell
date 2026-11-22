@@ -40,7 +40,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.domain.LinkEvent
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.ui.AppNavigationBar
 import com.example.ui.BadgeStampOverlay
+import com.example.ui.Destination
+import com.example.ui.Tab
+import com.example.ui.YouScreen
+import com.example.ui.YouSegment
 import com.example.ui.ShareCard
 import com.example.ui.AnalyticsScreen
 import com.example.ui.HomeScreen
@@ -70,6 +76,17 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: SyncWellViewModel by viewModels()
 
+    // Set by a notification tap or link ("destination" extra); consumed by the navigation container
+    private val deepLink = mutableStateOf<Destination?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink.value = Destination.parse(intent.getStringExtra(EXTRA_DESTINATION))
+    }
+
+    companion object { const val EXTRA_DESTINATION = "destination" }
+
     private val driveConsentLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -83,6 +100,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        deepLink.value = Destination.parse(intent?.getStringExtra(EXTRA_DESTINATION))
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -121,7 +139,7 @@ class MainActivity : ComponentActivity() {
                         }
                         is AppLaunchState.Ready -> {
                             // The container's own Scaffold applies the system-bar insets once; a second Scaffold here doubled them
-                            MainNavigationContainer(viewModel = viewModel, modifier = Modifier.fillMaxSize())
+                            MainNavigationContainer(viewModel = viewModel, modifier = Modifier.fillMaxSize(), deepLink = deepLink.value, onDeepLinkHandled = { deepLink.value = null })
                         }
                     }
 
@@ -186,11 +204,11 @@ class MainActivity : ComponentActivity() {
                             text = { Text("Tick \"${p.item.title}\" in today's routine?") },
                             confirmButton = {
                                 TextButton(onClick = { viewModel.answerLinkPrompt(true) }) {
-                                    Text("YES, TICK IT", color = Emerald600, fontWeight = FontWeight.Black)
+                                    Text("Yes, tick it", color = Emerald600, fontWeight = FontWeight.Black)
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { viewModel.answerLinkPrompt(false) }) { Text("NOT NOW", color = Slate400) }
+                                TextButton(onClick = { viewModel.answerLinkPrompt(false) }) { Text("Not now", color = Slate400) }
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                             containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface
@@ -204,12 +222,12 @@ class MainActivity : ComponentActivity() {
                             text = { Text("Your backup is stored privately in your own Google Drive. SyncWell can't see your other files.") },
                             confirmButton = {
                                 TextButton(onClick = { viewModel.continueDriveConsent() }) {
-                                    Text("CONTINUE", color = Emerald600, fontWeight = FontWeight.Black)
+                                    Text("Continue", color = Emerald600, fontWeight = FontWeight.Black)
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { viewModel.cancelDriveConsent() }) {
-                                    Text("CANCEL", color = Slate400)
+                                    Text("Cancel", color = Slate400)
                                 }
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
@@ -225,12 +243,12 @@ class MainActivity : ComponentActivity() {
                             text = { Text("We found an existing backup linked to your account. Would you like to restore your data (Todos and Weight Logs) now?") },
                             confirmButton = {
                                 TextButton(onClick = { viewModel.restoreDataFromCloud() }) {
-                                    Text("RESTORE NOW", color = com.example.ui.theme.Emerald600, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
+                                    Text("Restore now", color = com.example.ui.theme.Emerald600, fontWeight = androidx.compose.ui.text.font.FontWeight.Black)
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { viewModel.setActiveModal(null) }) {
-                                    Text("CANCEL", color = com.example.ui.theme.Slate400)
+                                    Text("Cancel", color = com.example.ui.theme.Slate400)
                                 }
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
@@ -244,10 +262,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = Modifier) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+fun MainNavigationContainer(
+    viewModel: SyncWellViewModel,
+    modifier: Modifier = Modifier,
+    deepLink: Destination? = null,
+    onDeepLinkHandled: () -> Unit = {}
+) {
+    var selected by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var youSegment by rememberSaveable { mutableStateOf(YouSegment.STATS) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val isTrackerFocused by viewModel.isTrackerScreenFocused.collectAsState()
+
+    // A notification tap or link that used to open Goals, Stats or Config now opens You on that segment
+    LaunchedEffect(deepLink) {
+        deepLink?.let { selected = it.tab; it.segment?.let { s -> youSegment = s }; onDeepLinkHandled() }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -273,76 +302,25 @@ fun MainNavigationContainer(viewModel: SyncWellViewModel, modifier: Modifier = M
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = OledBlack,
-        bottomBar = {
-            NavigationBar(
-                containerColor = SurfaceTier1,
-                tonalElevation = 0.dp,
-                modifier = Modifier.testTag("app_navigation_bar")
-            ) {
-                val items = listOf(
-                    Triple("Home", Icons.Default.Home, 0),
-                    Triple("Routine", Icons.Default.List, 1),
-                    Triple("Workout", Icons.Default.Star, 2),
-                    Triple("Focus", Icons.Default.PlayArrow, 3),
-                    Triple("Goals", Icons.Default.Check, 4),
-                    Triple("Stats", Icons.Default.Info, 5),
-                    Triple("Config", Icons.Default.Settings, 6)
-                )
-
-                items.forEach { (title, icon, index) ->
-                    val isSelected = selectedTabIndex == index
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { selectedTabIndex = index },
-                        icon = {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = "$title Tab",
-                                modifier = if (isSelected) Modifier.size(22.dp) else Modifier.size(20.dp)
-                            )
-                        },
-                        label = { 
-                            Text(
-                                text = title, 
-                                fontSize = 9.sp, 
-                                maxLines = 1, 
-                                softWrap = false,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            ) 
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = EmeraldGlow,
-                            unselectedIconColor = TextMuted,
-                            selectedTextColor = EmeraldGlow,
-                            unselectedTextColor = TextMuted,
-                            indicatorColor = EmeraldDim
-                        ),
-                        modifier = Modifier.testTag("nav_tab_$index")
-                    )
-                }
-            }
-        }
+        bottomBar = { AppNavigationBar(selected) { selected = it } }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (selectedTabIndex) {
-                0 -> HomeScreen(viewModel = viewModel, onNavigateToTab = { selectedTabIndex = it })
-                1 -> RoutinesScreen(viewModel = viewModel)
-                2 -> WorkoutScreen(viewModel = viewModel)
-                3 -> TrackerScreen(viewModel = viewModel)
-                4 -> TodosScreen(viewModel = viewModel)
-                5 -> AnalyticsScreen(viewModel = viewModel)
-                6 -> SettingsScreen(viewModel = viewModel)
+            when (selected) {
+                Tab.HOME -> HomeScreen(viewModel = viewModel, onNavigate = { d -> selected = d.tab; d.segment?.let { youSegment = it } })
+                Tab.ROUTINE -> RoutinesScreen(viewModel = viewModel)
+                Tab.WORKOUT -> WorkoutScreen(viewModel = viewModel)
+                Tab.FOCUS -> TrackerScreen(viewModel = viewModel)
+                Tab.YOU -> YouScreen(viewModel = viewModel, segment = youSegment, onSegmentChange = { youSegment = it })
             }
         }
 
         // Global back press to return to home if not on home
-        BackHandler(enabled = selectedTabIndex != 0) {
-            selectedTabIndex = 0
+        BackHandler(enabled = selected != Tab.HOME) {
+            selected = Tab.HOME
         }
     }
 }

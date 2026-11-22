@@ -152,7 +152,7 @@ fun SyncWellSplashScreen() {
 
             // Subtitle
             Text(
-                text = "CIRCADIAN WELLNESS & RUNBOOK ENGINE",
+                text = "Circadian wellness & runbook engine",
                 color = EmeraldGlow.copy(alpha = 0.9f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,

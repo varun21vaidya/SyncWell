@@ -136,7 +136,7 @@ fun WorkoutScreen(viewModel: SyncWellViewModel) {
             )
             else -> {
                 Column(Modifier.padding(bottom = 12.dp)) {
-                    Text("WORKOUT", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("Workout", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("Lifting", color = MaterialTheme.colorScheme.onBackground, fontSize = 26.sp, fontWeight = FontWeight.Black)
                 }
                 WorkoutStartContent(
@@ -192,19 +192,19 @@ fun ExerciseNotesDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (customNote != null && !isEditing) {
-                    Text("CUSTOM NOTE", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("Custom note", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(customNote, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                     TextButton(onClick = {
                         viewModel.resetCustomNoteForExercise(exerciseId)
                         editText = ""
                     }) { Text("Reset to Default", color = Color.Red, fontSize = 11.sp) }
                 } else if (!isEditing) {
-                    Text("FORM NOTES", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("Form notes", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Text(defaultNote, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 20.sp)
                 }
 
                 if (isEditing) {
-                    Text("EDIT NOTE", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("Edit note", color = Slate400, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
                         value = editText,
                         onValueChange = { editText = it },

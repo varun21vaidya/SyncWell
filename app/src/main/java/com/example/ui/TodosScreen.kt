@@ -45,7 +45,7 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
             // Header
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("GOALS DASHBOARD", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("Goals dashboard", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("My Goals", color = MaterialTheme.colorScheme.onBackground, fontSize = 26.sp, fontWeight = FontWeight.Black)
                 }
             }
@@ -295,8 +295,8 @@ fun GoalItemRow(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                 )
             },
-            confirmButton = { TextButton(onClick = { onSetTarget(targetText.toIntOrNull()); showTarget = false }) { Text("SAVE", color = EmeraldGlow, fontWeight = FontWeight.Black) } },
-            dismissButton = { TextButton(onClick = { showTarget = false }) { Text("CANCEL", color = Slate400) } },
+            confirmButton = { TextButton(onClick = { onSetTarget(targetText.toIntOrNull()); showTarget = false }) { Text("Save", color = EmeraldGlow, fontWeight = FontWeight.Black) } },
+            dismissButton = { TextButton(onClick = { showTarget = false }) { Text("Cancel", color = Slate400) } },
             shape = RoundedCornerShape(20.dp), containerColor = MaterialTheme.colorScheme.surface
         )
     }

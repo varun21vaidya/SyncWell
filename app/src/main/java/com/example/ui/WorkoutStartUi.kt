@@ -94,7 +94,7 @@ fun WorkoutStartContent(
                 border = BorderStroke(1.dp, EmeraldGlow)
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("WORKOUT IN PROGRESS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = EmeraldGlow)
+                    Text("Workout in progress", fontSize = 10.sp, fontWeight = FontWeight.Black, color = EmeraldGlow)
                     Text(NextSplitRule.splitOf(activeSession.dayType)?.title ?: activeSession.dayType, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Button(
@@ -119,7 +119,7 @@ fun WorkoutStartContent(
         // Up next
         item {
             WorkoutCard {
-                SectionLabel("UP NEXT")
+                SectionLabel("Up next")
                 Text(start.next.title, fontSize = 22.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
                 Text(start.next.muscles, fontSize = 12.sp, color = Slate400)
                 Spacer(Modifier.height(6.dp))
@@ -143,7 +143,7 @@ fun WorkoutStartContent(
             WorkoutCard {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        SectionLabel("THIS WEEK")
+                        SectionLabel("This week")
                         Text("${start.thisWeekCount} of ${start.weeklyTarget} workouts", fontSize = 18.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground)
                         if (start.cardioMinutesThisWeek > 0) Text("${start.cardioMinutesThisWeek} min cardio this week", fontSize = 12.sp, color = Slate400)
                     }
@@ -201,7 +201,7 @@ fun WorkoutStartContent(
         }
 
         // Other splits
-        item { SectionLabel("OTHER SPLITS", Modifier.padding(top = 4.dp)) }
+        item { SectionLabel("Other splits", Modifier.padding(top = 4.dp)) }
         items(Split.values().filter { it != start.next }) { split ->
             Card(
                 modifier = Modifier.fillMaxWidth().testTag("workout_preset_${split.key}").clickable { onStart(split) },
@@ -225,7 +225,7 @@ fun WorkoutStartContent(
         item {
             WorkoutCard {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel("RECENT")
+                    SectionLabel("Recent")
                     TextButton(onClick = onSeeAll, modifier = Modifier.height(48.dp).testTag("workout_see_all")) { Text("See all", color = EmeraldGlow, fontWeight = FontWeight.Bold) }
                 }
                 if (start.recent.isEmpty()) {

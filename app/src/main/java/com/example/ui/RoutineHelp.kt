@@ -58,7 +58,7 @@ fun RoutineHelpDialog(onDismiss: () -> Unit) {
                 Text("Swipe for the next step", fontSize = 10.sp, color = Slate400, modifier = Modifier.padding(top = 6.dp))
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("GOT IT", color = Emerald600, fontWeight = FontWeight.Black) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it", color = Emerald600, fontWeight = FontWeight.Black) } },
         shape = RoundedCornerShape(20.dp),
         containerColor = SurfaceTier1
     )

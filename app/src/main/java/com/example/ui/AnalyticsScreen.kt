@@ -131,14 +131,14 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "CONSOLIDATED PERFORMANCE METRICS",
+                    text = "Consolidated performance metrics",
                     color = Slate400,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "Executive Statistics",
+                    text = "Your stats",
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Black
@@ -196,7 +196,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("CONSISTENCY", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("Consistency", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldGlow, modifier = Modifier.size(16.dp))
                         }
                         Text(
@@ -239,7 +239,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("FOCUS EFFORT", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("Focus effort", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Icon(Icons.Default.PlayArrow, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(16.dp))
                         }
                         val focusHours = totalFocusMins / 60
@@ -290,7 +290,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("WORKOUTS", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("Workouts", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Icon(Icons.Default.Favorite, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
                         }
                         Text(
@@ -333,7 +333,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("BODY WEIGHT", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("Body weight", color = Slate400, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                             Icon(Icons.Default.Star, contentDescription = null, tint = CyanLaser, modifier = Modifier.size(16.dp))
                         }
                         val currentWtStr = latestWeight?.let { String.format(Locale.US, "%.1f kg", it) } ?: "Unlogged"
@@ -396,7 +396,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "GYM STREAK",
+                        text = "Gym streak",
                         color = Slate400,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -433,7 +433,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "DIET STREAK",
+                        text = "Diet streak",
                         color = Slate400,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -511,7 +511,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = "REGISTER BODYWEIGHT MEASUREMENT",
+                            text = "Register bodyweight measurement",
                             color = Slate400,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -628,7 +628,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "FOCUS TIME & ALLOCATION",
+                            text = "Focus time & allocation",
                             color = Slate400,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -667,7 +667,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                     val studyChartData = remember(resolvedList, selectedPeriod) {
                         getChartData(resolvedList, selectedPeriod) { it.totalStudyMinutes }
                     }
-                    VerticalColumnChart(title = "STUDY FOCUS (HOURS)", data = studyChartData, color = PurpleAccent, isHours = true)
+                    VerticalColumnChart(title = "Study focus (hours)", data = studyChartData, color = PurpleAccent, isHours = true)
                 } else {
                     // Multi-Segment Focus Bars for Daily
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -703,8 +703,8 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
                 getChartData(resolvedList, selectedPeriod) { (it.dietProteinPoints * 25).coerceAtMost(100) }
             }
 
-            VerticalColumnChart(title = "GYM ADHERENCE (%)", data = gymChartData, color = EmeraldGlow)
-            VerticalColumnChart(title = "DIET PERFORMANCE (%)", data = dietChartData, color = GoldAccent)
+            VerticalColumnChart(title = "Gym adherence (%)", data = gymChartData, color = EmeraldGlow)
+            VerticalColumnChart(title = "Diet performance (%)", data = dietChartData, color = GoldAccent)
         } else {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -714,7 +714,7 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(
-                        text = "ROUTINE ADHERENCE RATE",
+                        text = "Routine adherence rate",
                         color = Slate400,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
