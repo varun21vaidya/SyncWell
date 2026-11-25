@@ -293,9 +293,11 @@ fun MainNavigationContainer(
         }
     }
 
+    // Onboarding's "Import my own routine" asks for the Routine tab, where the import opens by itself
+    val importRequested by viewModel.routineImportRequested.collectAsState()
     AppNavHost(
         modifier = modifier,
-        deepLink = deepLink,
+        deepLink = deepLink ?: if (importRequested) Destination(Tab.ROUTINE) else null,
         onDeepLinkHandled = onDeepLinkHandled,
         home = { onNavigate -> HomeScreen(viewModel = viewModel, onNavigate = onNavigate) },
         routine = { RoutinesScreen(viewModel = viewModel) },

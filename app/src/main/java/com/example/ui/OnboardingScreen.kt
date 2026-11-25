@@ -253,7 +253,15 @@ private fun OnboardingSetup(viewModel: SyncWellViewModel, step: Int, onStep: (In
                     onSubmit = { r ->
                         scope.launch { viewModel.completeOnboarding(r.answers, r.waterMl, r.location, r.currentWeightKg, r.goalWeightKg) }
                     },
-                    onSkip = { scope.launch { viewModel.completeOnboarding() } }
+                    onSkip = { scope.launch { viewModel.completeOnboarding() } },
+                    secondaryLabel = "Import my own routine with AI",
+                    onSecondary = { r ->
+                        // Finish exactly as usual, then ask the Routine tab to open the import with Replace preselected
+                        scope.launch {
+                            viewModel.completeOnboarding(r.answers, r.waterMl, r.location, r.currentWeightKg, r.goalWeightKg)
+                            viewModel.requestRoutineImport()
+                        }
+                    }
                 )
             }
         }

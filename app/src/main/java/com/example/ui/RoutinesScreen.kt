@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -86,10 +87,26 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
     var showManage by remember { mutableStateOf(false) }
     var showHelp by remember { mutableStateOf(false) }
     if (showHelp) RoutineHelpDialog { showHelp = false }
+    var showImport by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    val importRequested by viewModel.routineImportRequested.collectAsState()
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    // Onboarding asks for the import right after it finishes: open it with Replace preselected
+    LaunchedEffect(importRequested) { if (importRequested) { showImport = true } }
 
 
     BackHandler(enabled = selectedRoutineItem != null) {
         selectedRoutineItem = null
+    }
+
+    if (showImport) {
+        RoutineImportSheet(
+            viewModel, startWithReplace = importRequested,
+            onDone = { notice = it; showImport = false; viewModel.clearRoutineImportRequest() },
+            onClose = { showImport = false; viewModel.clearRoutineImportRequest() }
+        )
+        return
     }
 
     if (showManage) {
@@ -165,6 +182,17 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { showHelp = true }) { Icon(Icons.Default.Info, contentDescription = "How routines work", tint = Slate400) }
             }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { showImport = true }, modifier = Modifier.testTag("routine_import_btn")) { Text("Import with AI prompt", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                TextButton(onClick = {
+                    scope.launch {
+                        runCatching { viewModel.routineExportText() }
+                            .onSuccess { clipboard.setText(androidx.compose.ui.text.AnnotatedString(it)); notice = "Copied. Paste it into your AI chat and write your change under \"My change:\"." }
+                            .onFailure { notice = "Could not copy your routine." }
+                    }
+                }, modifier = Modifier.testTag("routine_export_btn")) { Text("Copy my routine as text", color = Slate400, fontSize = 12.sp) }
+            }
+            notice?.let { Text(it, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)) }
 
             // Vacation Mode Alert status
             if (isVacationActive) {

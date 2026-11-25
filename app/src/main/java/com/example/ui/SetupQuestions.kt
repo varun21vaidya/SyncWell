@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,9 @@ fun SetupQuestionsForm(
     askCurrentWeight: Boolean,
     submitLabel: String,
     onSubmit: (SetupResult) -> Unit,
-    onSkip: (() -> Unit)? = null
+    onSkip: (() -> Unit)? = null,
+    secondaryLabel: String? = null, // a second finish button that also hands the answers over, e.g. onboarding's import
+    onSecondary: ((SetupResult) -> Unit)? = null
 ) {
     val a = initial?.answers ?: SetupAnswers()
     var wake by remember { mutableStateOf(a.wakeTime) }
@@ -101,19 +104,21 @@ fun SetupQuestionsForm(
             }) { Text("Add") }
         }
 
+        fun result() = SetupResult(
+            SetupAnswers(wake, sleep, days.toList().sorted(), vitamins),
+            ((water.toDoubleOrNull() ?: 2.5) * 1000).toInt(), location,
+            current.toDoubleOrNull(), goal.toDoubleOrNull()
+        )
         Button(
             enabled = valid,
-            onClick = {
-                onSubmit(SetupResult(
-                    SetupAnswers(wake, sleep, days.toList().sorted(), vitamins),
-                    ((water.toDoubleOrNull() ?: 2.5) * 1000).toInt(), location,
-                    current.toDoubleOrNull(), goal.toDoubleOrNull()
-                ))
-            },
+            onClick = { onSubmit(result()) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EmeraldGlow, contentColor = OledBlack),
             shape = RoundedCornerShape(14.dp)
         ) { Text(submitLabel, fontWeight = FontWeight.Black) }
+        if (secondaryLabel != null && onSecondary != null) {
+            OutlinedButton(enabled = valid, onClick = { onSecondary(result()) }, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("onboarding_import"), shape = RoundedCornerShape(14.dp)) { Text(secondaryLabel) }
+        }
         onSkip?.let { TextButton(onClick = it, modifier = Modifier.fillMaxWidth()) { Text("Skip, use defaults", color = Slate400) } }
     }
 }

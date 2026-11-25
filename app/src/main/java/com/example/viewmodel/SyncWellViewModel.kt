@@ -1653,6 +1653,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun deleteRoutineTemplate(id: String) { viewModelScope.launch { dao.deleteRoutineTemplate(id) } }
 
     // ROUTINE IMPORT (see RoutineImport and RoutineImportUseCase)
+    private val _routineImportRequested = MutableStateFlow(false)
+    /** Set by onboarding's "Import my own routine with AI": the Routine tab opens the import with Replace preselected. */
+    val routineImportRequested: StateFlow<Boolean> = _routineImportRequested
+    fun requestRoutineImport() { _routineImportRequested.value = true }
+    fun clearRoutineImportRequest() { _routineImportRequested.value = false }
+
     /** Supplement names the user has logged, in the order first logged, so the prompt can match auto-tick by name. */
     suspend fun loggedSupplementNames(): List<String> =
         dao.getAllSupplementLogs().sortedBy { it.loggedAt }.map { it.supplementName }.distinct()
