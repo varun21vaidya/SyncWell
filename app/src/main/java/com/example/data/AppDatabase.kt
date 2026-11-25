@@ -33,9 +33,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GoalCompletion::class,
         CardioEntry::class,
         SyncQueueItem::class,
-        ExerciseCustomNote::class
+        ExerciseCustomNote::class,
+        JourneyState::class,
+        Goal::class,
+        GoalProgress::class,
+        PassportStamp::class,
+        JourneyNote::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -100,6 +105,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tracker_sessions ADD COLUMN goalId TEXT")
+                db.execSQL("CREATE TABLE IF NOT EXISTS journey_state (id INTEGER NOT NULL, enabled INTEGER NOT NULL, characterId TEXT NOT NULL, regionIndex INTEGER NOT NULL, stepInRegion INTEGER NOT NULL, furthestRegion INTEGER NOT NULL, freezeUsedWeekStart TEXT, lastProcessedDate TEXT, ambitionText TEXT, identityText TEXT, ambitionStart TEXT, targetDate TEXT, bigRewardText TEXT, bigRewardUnlockedAt TEXT, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS goals (id TEXT NOT NULL, title TEXT NOT NULL, kind TEXT NOT NULL, mandatory INTEGER NOT NULL, measure TEXT NOT NULL, target REAL NOT NULL, targetLabel TEXT, focusLinked INTEGER NOT NULL, windowStart TEXT NOT NULL, windowEnd TEXT NOT NULL, status TEXT NOT NULL, regionIndex INTEGER, rewardText TEXT, rewardClaimedAt TEXT, planText TEXT, planTime TEXT, ifThenText TEXT, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS goal_progress (id TEXT NOT NULL, goalId TEXT NOT NULL, date TEXT NOT NULL, amount REAL NOT NULL, note TEXT, PRIMARY KEY(id), FOREIGN KEY(goalId) REFERENCES goals(id) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_goal_progress_goalId ON goal_progress (goalId)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS passport (id TEXT NOT NULL, kind TEXT NOT NULL, regionIndex INTEGER NOT NULL, earnedAt TEXT NOT NULL, label TEXT NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS journey_notes (id TEXT NOT NULL, date TEXT NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL, PRIMARY KEY(id))")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -107,7 +124,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "syncwell_db"
                 )
-                    .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .build()
                 INSTANCE = instance
                 instance

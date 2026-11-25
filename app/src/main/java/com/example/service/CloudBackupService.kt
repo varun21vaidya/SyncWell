@@ -81,6 +81,7 @@ object CloudBackupService {
             })
         }
         root.put("goalCompletions", completionsArr)
+        JourneyBackup.write(root, dao)
 
         // 2. Weight Logs
         val weights = dao.getAllWeightLogs()
@@ -170,6 +171,7 @@ object CloudBackupService {
                 putOpt("durationMin", ts.durationMin)
                 put("dateKey", ts.dateKey)
                 put("isDeleted", ts.isDeleted)
+                putOpt("goalId", ts.goalId)
             })
         }
         root.put("trackerSessions", tsArr)
@@ -672,11 +674,13 @@ object CloudBackupService {
                     endTime = if (obj.has("endTime") && !obj.isNull("endTime")) obj.getString("endTime") else null,
                     durationMin = if (obj.has("durationMin") && !obj.isNull("durationMin")) obj.getInt("durationMin") else null,
                     dateKey = obj.getString("dateKey"),
-                    isDeleted = obj.optBoolean("isDeleted", false)
+                    isDeleted = obj.optBoolean("isDeleted", false),
+                    goalId = if (obj.has("goalId") && !obj.isNull("goalId")) obj.getString("goalId") else null
                 ))
             }
             if (list.isNotEmpty()) dao.insertTrackerSessions(list)
         }
+        JourneyBackup.read(root, dao)
 
         // 8. Supplement Logs
         root.optJSONArray("supplementLogs")?.let { arr ->

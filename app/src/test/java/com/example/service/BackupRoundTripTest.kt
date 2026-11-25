@@ -147,4 +147,36 @@ class BackupRoundTripTest {
         CloudBackupService.restoreFromJson(dao, """{"todos":[]}""")
         assertTrue(dao.getAllCardioEntries().isEmpty())
     }
+
+    @Test fun journeyBackupBringsBackStateGoalsProgressAndFocusLink() = runBlocking {
+        dao.upsertJourneyState(JourneyState(enabled = true, characterId = "ivy", regionIndex = 2, stepInRegion = 9, furthestRegion = 2,
+            freezeUsedWeekStart = "2026-11-23", lastProcessedDate = "2026-11-25", ambitionText = "Land a backend role"))
+        dao.insertGoals(listOf(Goal("g1", "DSA", "COMMITMENT", true, "COUNT", 10.0, regionIndex = 2, windowStart = "2026-11-23", windowEnd = "2026-11-29", rewardText = "Burger", planText = "After lunch", planTime = "13:30")))
+        dao.insertGoalProgress(listOf(GoalProgress("p1", "g1", "2026-11-24", 3.0, "two easy ones")))
+        dao.insertPassportStamps(listOf(PassportStamp("s1", "REGION", 0, "2026-11-10", "Home Start")))
+        dao.insertJourneyNotes(listOf(JourneyNote("n1", "2026-11-24", "REFLECTION", "Good week")))
+        dao.insertTrackerSession(TrackerSession("t1", "STUDY", "TIMER", "x", "y", 45, "2026-11-24", goalId = "g1"))
+
+        val (json, _) = CloudBackupService.buildBackup(dao)
+        db.clearAllTables()
+        CloudBackupService.restoreFromJson(dao, json)
+
+        val s = dao.getJourneyState()!!
+        assertEquals("2026-11-25", s.lastProcessedDate) // without it old days would be replayed
+        assertEquals(9, s.stepInRegion); assertEquals("ivy", s.characterId); assertEquals("2026-11-23", s.freezeUsedWeekStart)
+        assertEquals("Land a backend role", s.ambitionText); assertEquals(null, s.targetDate)
+        val g = dao.getAllGoals().single()
+        assertEquals("Burger", g.rewardText); assertEquals(2, g.regionIndex); assertEquals("13:30", g.planTime); assertEquals(null, g.ifThenText)
+        assertEquals(3.0, dao.getAllGoalProgress().single().amount, 0.0)
+        assertEquals("Home Start", dao.getAllPassportStamps().single().label)
+        assertEquals("Good week", dao.getAllJourneyNotes().single().text)
+        assertEquals("g1", dao.getAllTrackerSessions().single().goalId)
+    }
+
+    @Test fun olderBackupWithoutJourneyKeysLeavesNoJourneyRows() = runBlocking {
+        CloudBackupService.restoreFromJson(dao, """{"trackerSessions":[{"id":"t","activityType":"STUDY","startTime":"x","dateKey":"2026-11-07"}]}""")
+        assertEquals(null, dao.getJourneyState())
+        assertTrue(dao.getAllGoals().isEmpty())
+        assertEquals(null, dao.getAllTrackerSessions().single().goalId)
+    }
 }

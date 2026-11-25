@@ -485,4 +485,35 @@ interface SyncWellDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTodos(todos: List<Todo>)
+
+    // Journey (see JourneyRules); one state row, goals with dated progress, stamps and notes
+    @Query("SELECT * FROM journey_state WHERE id = 1")
+    suspend fun getJourneyState(): JourneyState?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertJourneyState(state: JourneyState)
+
+    @Query("SELECT * FROM goals")
+    suspend fun getAllGoals(): List<Goal>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoals(goals: List<Goal>)
+
+    @Query("SELECT * FROM goal_progress")
+    suspend fun getAllGoalProgress(): List<GoalProgress>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoalProgress(entries: List<GoalProgress>)
+
+    @Query("SELECT * FROM passport")
+    suspend fun getAllPassportStamps(): List<PassportStamp>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPassportStamps(stamps: List<PassportStamp>)
+
+    @Query("SELECT * FROM journey_notes")
+    suspend fun getAllJourneyNotes(): List<JourneyNote>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJourneyNotes(notes: List<JourneyNote>)
 }

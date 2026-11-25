@@ -245,7 +245,8 @@ data class TrackerSession(
     val endTime: String?,
     val durationMin: Int?,
     val dateKey: String, // YYYY-MM-DD
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val goalId: String? = null // the Journey goal this focus time counts toward
 )
 
 @Entity(tableName = "supplement_logs")

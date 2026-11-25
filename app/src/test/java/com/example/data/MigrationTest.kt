@@ -89,4 +89,19 @@ class MigrationTest {
         db.query("SELECT COUNT(*) FROM cardio_entries").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
         db.query("SELECT activeSeconds FROM workout_sessions WHERE id = 'w1'").use { it.moveToFirst(); assertEquals(1800, it.getInt(0)) }
     }
+
+    @Test fun migrate12To13AddsJourneyTablesAndGoalIdAndKeepsFocusSessions() {
+        helper.createDatabase(dbName, 12).apply {
+            execSQL("INSERT INTO tracker_sessions (id, activityType, source, startTime, endTime, durationMin, dateKey, isDeleted) VALUES ('t1', 'STUDY', 'TIMER', 'x', 'y', 45, '2026-11-07', 0)")
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 13, true, AppDatabase.MIGRATION_12_13)
+        db.query("SELECT durationMin, goalId FROM tracker_sessions WHERE id = 't1'").use { it.moveToFirst(); assertEquals(45, it.getInt(0)); assertTrue(it.isNull(1)) }
+        db.execSQL("INSERT INTO goals (id, title, kind, mandatory, measure, target, focusLinked, windowStart, windowEnd, status) VALUES ('g1', 'DSA', 'COMMITMENT', 1, 'COUNT', 10.0, 0, '2026-11-23', '2026-11-29', 'PENDING')")
+        db.execSQL("INSERT INTO goal_progress (id, goalId, date, amount) VALUES ('p1', 'g1', '2026-11-24', 2.0)")
+        db.execSQL("INSERT INTO journey_state (id, enabled, characterId, regionIndex, stepInRegion, furthestRegion) VALUES (1, 1, 'max', 0, 0, 0)")
+        db.execSQL("INSERT INTO passport (id, kind, regionIndex, earnedAt, label) VALUES ('s1', 'REGION', 0, 'x', 'Home Start')")
+        db.execSQL("INSERT INTO journey_notes (id, date, kind, text) VALUES ('n1', '2026-11-24', 'LOG', 'hi')")
+        db.query("SELECT COUNT(*) FROM goal_progress").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+    }
 }
