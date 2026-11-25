@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -26,10 +25,9 @@ private fun iconFor(tab: Tab): ImageVector = when (tab) {
     Tab.ROUTINE -> Icons.Default.List
     Tab.WORKOUT -> Icons.Default.Star
     Tab.FOCUS -> Icons.Default.PlayArrow
-    Tab.YOU -> Icons.Default.Person
 }
 
-/** Five tabs. The selected one gets a mint icon and label on a Surface3 pill; the rest are muted. */
+/** Four tabs. The selected one gets a mint icon and label on a Surface3 pill; the rest are muted. */
 @Composable
 fun AppNavigationBar(selected: Tab, onSelect: (Tab) -> Unit) {
     NavigationBar(containerColor = Surface1, tonalElevation = 0.dp, modifier = Modifier.testTag("app_navigation_bar")) {

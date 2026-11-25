@@ -280,3 +280,55 @@ fun EmptyDayCard(onManage: () -> Unit) {
         }
     }
 }
+
+/** "72.4" or "72,4" to kg, or null when empty, not a number, or outside a human range. */
+internal fun parseWeightKg(text: String): Double? =
+    text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it in 20.0..400.0 }
+
+/** Gym progress for the week, with today's body weight right below it: one tap to log, so nobody has to dig through Stats. */
+@Composable
+fun GymWeightCards(gym: com.example.domain.GymStreakResult, todayWeight: Double?, lastWeight: Double?, targetKg: Double, onLog: (Double) -> Unit) {
+    val ln = java.util.Locale.US
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Card(Modifier.fillMaxWidth().testTag("home_gym_card"), colors = CardDefaults.cardColors(containerColor = Surface1),
+            shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Border)) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Gym this week", color = TextSecondary, fontSize = 12.sp)
+                    Text("${gym.thisWeekCount} of ${gym.target} workouts", color = if (gym.thisWeekCount >= gym.target) Gym else TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                Text("${gym.currentWeeks} wk streak", color = Streak, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        var text by remember(todayWeight) { mutableStateOf(todayWeight?.let { String.format(ln, "%.1f", it) } ?: "") }
+        val parsed = parseWeightKg(text)
+        Card(Modifier.fillMaxWidth().testTag("home_weight_card"), colors = CardDefaults.cardColors(containerColor = Surface1),
+            shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Border)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (todayWeight != null) "Today's weight: ${String.format(ln, "%.1f", todayWeight)} kg" else "Log today's weight",
+                    color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold
+                )
+                val hint = listOfNotNull(
+                    lastWeight?.takeIf { todayWeight == null }?.let { "Last: ${String.format(ln, "%.1f", it)} kg" },
+                    targetKg.takeIf { it > 0 }?.let { "Goal: ${String.format(ln, "%.1f", it)} kg" }
+                ).joinToString(" · ")
+                if (hint.isNotEmpty()) Text(hint, color = TextSecondary, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = text, onValueChange = { text = it.take(6) }, singleLine = true,
+                        placeholder = { Text("kg", fontSize = 13.sp) }, modifier = Modifier.weight(1f).testTag("home_weight_input"),
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
+                    )
+                    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+                    androidx.compose.material3.Button(
+                        onClick = { parsed?.let(onLog); focus.clearFocus() }, enabled = parsed != null,
+                        modifier = Modifier.height(52.dp).testTag("home_weight_save"), shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Progress, contentColor = androidx.compose.ui.graphics.Color(0xFF05291A))
+                    ) { Text(if (todayWeight != null) "Update" else "Save", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+    }
+}

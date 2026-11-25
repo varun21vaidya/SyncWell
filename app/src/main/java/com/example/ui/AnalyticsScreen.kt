@@ -156,6 +156,16 @@ fun AnalyticsScreen(viewModel: SyncWellViewModel) {
             }
         }
 
+        TodayStatsCard(
+            workoutDone = todayAnalytics?.let { it.isGymCompleted || it.totalWorkoutMinutes > 0 } == true,
+            workoutMinutes = todayAnalytics?.totalWorkoutMinutes ?: 0,
+            gymWeekCount = gym.thisWeekCount, gymTarget = gym.target, gymWeeks = gym.currentWeeks,
+            proteinMet = isDietDoneToday,
+            focusMinutes = (todayAnalytics?.totalStudyMinutes ?: 0) + (todayAnalytics?.workMin ?: 0),
+            consistencyPct = Math.round((todayAnalytics?.routineCompletionPct ?: 0.0) * 100).toInt(),
+            weightKg = latestWeight, targetKg = targetWeightKg
+        )
+
         // Weekly review (Sunday, hide-able), week summary, medals, heatmap
         val showReview by viewModel.showWeeklyReview.collectAsState()
         val statsData by viewModel.statsData.collectAsState()

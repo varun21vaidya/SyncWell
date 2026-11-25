@@ -1,32 +1,32 @@
 package com.example.ui
 
-/** The five bottom tabs. Stats, Goals and Config live inside You. */
-enum class Tab(val title: String) { HOME("Home"), ROUTINE("Routine"), WORKOUT("Workout"), FOCUS("Focus"), YOU("You") }
+/** The four bottom tabs. Stats, Goals and Settings open from icons on Home as full screens. */
+enum class Tab(val title: String) { HOME("Home"), ROUTINE("Routine"), WORKOUT("Workout"), FOCUS("Focus") }
 
-/** The three views inside the You tab, shown as a segmented control. Stats is the default. */
-enum class YouSegment(val title: String) { STATS("Stats"), GOALS("Goals"), CONFIG("Config") }
+/** Full screens opened from the Home header, with a back arrow. */
+enum class Overlay(val title: String) { STATS("Stats"), GOALS("Goals"), SETTINGS("Settings") }
 
-/** Where a tap or a deep link should land: a tab, and for You the segment. */
-data class Destination(val tab: Tab, val segment: YouSegment? = null) {
+/** Where a tap or a deep link should land: a tab, and optionally a full screen on top of it. */
+data class Destination(val tab: Tab, val overlay: Overlay? = null) {
     companion object {
         val HOME = Destination(Tab.HOME)
         val ROUTINE = Destination(Tab.ROUTINE)
         val FOCUS = Destination(Tab.FOCUS)
-        val GOALS = Destination(Tab.YOU, YouSegment.GOALS)
+        val GOALS = Destination(Tab.HOME, Overlay.GOALS)
 
         /**
-         * Reads a destination name from a notification or deep link. Goals, Stats and Config (and the older Tasks / Settings
-         * names) now open You on that segment. Unknown names give null, so the app just opens where it was.
+         * Reads a destination name from a notification or deep link. Goals, Stats and Settings (and the older Tasks / Config / You
+         * names) open that screen on top of Home. Unknown names give null, so the app just opens where it was.
          */
         fun parse(name: String?): Destination? = when (name?.trim()?.uppercase()) {
             "HOME" -> HOME
             "ROUTINE" -> ROUTINE
             "WORKOUT" -> Destination(Tab.WORKOUT)
             "FOCUS" -> FOCUS
-            "YOU" -> Destination(Tab.YOU)
-            "STATS" -> Destination(Tab.YOU, YouSegment.STATS)
+            "YOU" -> Destination(Tab.HOME, Overlay.SETTINGS)
+            "STATS" -> Destination(Tab.HOME, Overlay.STATS)
             "GOALS", "TASKS" -> GOALS
-            "CONFIG", "SETTINGS" -> Destination(Tab.YOU, YouSegment.CONFIG)
+            "CONFIG", "SETTINGS" -> Destination(Tab.HOME, Overlay.SETTINGS)
             else -> null
         }
     }

@@ -39,17 +39,9 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
     ) {
-            // Header
-            item {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Goals dashboard", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text("My Goals", color = MaterialTheme.colorScheme.onBackground, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                }
-            }
-
             // ── SHORT TERM GOALS ──
             item {
                 GoalSectionHeader(
@@ -89,7 +81,7 @@ fun TodosScreen(viewModel: SyncWellViewModel) {
 
             item {
                 HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier.padding(vertical = 2.dp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                     thickness = 1.dp
                 )
@@ -184,8 +176,8 @@ fun GoalSectionHeader(
             }
         }
 
-        // Priority chips
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Priority chips, only while a goal is being typed
+        if (input.isNotBlank()) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("HIGH", "MEDIUM", "LOW").forEach { p ->
                 val isSelected = selectedPriority == p
                 val chipBg = when(p) { "HIGH" -> if (isSelected) RoseCrimson else SurfaceTier2; "MEDIUM" -> if (isSelected) AmberFlame else SurfaceTier2; else -> if (isSelected) EmeraldGlow else SurfaceTier2 }
@@ -201,8 +193,8 @@ fun GoalSectionHeader(
 
 @Composable
 fun EmptyGoalPlaceholder(text: String) {
-    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = TextMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(text, color = TextMuted, fontSize = 13.sp)
     }
 }
 

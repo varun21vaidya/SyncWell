@@ -62,6 +62,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
     }
     var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(60_000); nowMinutes = currentMinutes() } }
+    val todayKey by DayBoundaryManager.currentTargetDate.collectAsState()
 
 
     Column(
@@ -79,7 +80,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                val todayKey by DayBoundaryManager.currentTargetDate.collectAsState()
                 Text(
                     text = greetingFor(nowMinutes / 60),
                     color = MaterialTheme.colorScheme.onBackground,
@@ -91,7 +91,9 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
                 )
                 Text(text = dateHeader(todayKey), color = Slate400, fontSize = 12.sp)
             }
-
+            HomeShortcut(com.example.R.drawable.ic_target, "Goals", "home_goals_btn") { onNavigate(Destination.GOALS) }
+            HomeShortcut(com.example.R.drawable.ic_trophy, "Stats and achievements", "home_stats_btn") { onNavigate(Destination(Tab.HOME, Overlay.STATS)) }
+            HomeShortcut(null, "Settings", "home_settings_btn") { onNavigate(Destination(Tab.HOME, Overlay.SETTINGS)) }
         }
 
         if (activeRoutineItems.isEmpty()) {
@@ -275,33 +277,23 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
             }
         }
 
-        // Bodyweight Target metrics info card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceTier2),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, OledBorder)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Target body composition",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.sp
-                )
-                val latestWeightText = latestWeight?.let { " | Latest Logged: ${String.format(Locale.US, "%.1f", it)} kg" } ?: ""
-                val targetStr = String.format(Locale.US, "%.1f", targetWeightKg)
-                Text(
-                    text = "Current metric goal is set to $targetStr kg$latestWeightText. Ensure you register scale weights within Analytics logs tab regularly.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                    lineHeight = 18.sp
-                )
-            }
-        }
+        GymWeightCards(
+            gym = streaks.gym,
+            todayWeight = weightLogs.firstOrNull { it.dateKey == todayKey }?.weightKg,
+            lastWeight = latestWeight, targetKg = targetWeightKg,
+            onLog = { viewModel.logWeight(it) }
+        )
     }
 }
 
 private fun currentMinutes(): Int = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) * 60 + it.get(java.util.Calendar.MINUTE) }
+
+
+/** A 40dp header icon that opens Goals, Stats or Settings. A null [drawable] means the gear. */
+@Composable
+private fun HomeShortcut(drawable: Int?, description: String, tag: String, onClick: () -> Unit) {
+    androidx.compose.material3.IconButton(onClick = onClick, modifier = Modifier.size(40.dp).testTag(tag)) {
+        if (drawable != null) androidx.compose.material3.Icon(androidx.compose.ui.res.painterResource(drawable), description, tint = com.example.ui.theme.TextSecondary)
+        else androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.Settings, description, tint = com.example.ui.theme.TextSecondary)
+    }
+}

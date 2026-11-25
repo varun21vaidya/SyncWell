@@ -45,8 +45,9 @@ import com.example.ui.AppNavigationBar
 import com.example.ui.BadgeStampOverlay
 import com.example.ui.Destination
 import com.example.ui.Tab
-import com.example.ui.YouScreen
-import com.example.ui.YouSegment
+import com.example.ui.Overlay
+import com.example.ui.AppNavHost
+import com.example.ui.OverlayScreen
 import com.example.ui.ShareCard
 import com.example.ui.AnalyticsScreen
 import com.example.ui.HomeScreen
@@ -268,15 +269,8 @@ fun MainNavigationContainer(
     deepLink: Destination? = null,
     onDeepLinkHandled: () -> Unit = {}
 ) {
-    var selected by rememberSaveable { mutableStateOf(Tab.HOME) }
-    var youSegment by rememberSaveable { mutableStateOf(YouSegment.STATS) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val isTrackerFocused by viewModel.isTrackerScreenFocused.collectAsState()
-
-    // A notification tap or link that used to open Goals, Stats or Config now opens You on that segment
-    LaunchedEffect(deepLink) {
-        deepLink?.let { selected = it.tab; it.segment?.let { s -> youSegment = s }; onDeepLinkHandled() }
-    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -299,28 +293,14 @@ fun MainNavigationContainer(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = OledBlack,
-        bottomBar = { AppNavigationBar(selected) { selected = it } }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (selected) {
-                Tab.HOME -> HomeScreen(viewModel = viewModel, onNavigate = { d -> selected = d.tab; d.segment?.let { youSegment = it } })
-                Tab.ROUTINE -> RoutinesScreen(viewModel = viewModel)
-                Tab.WORKOUT -> WorkoutScreen(viewModel = viewModel)
-                Tab.FOCUS -> TrackerScreen(viewModel = viewModel)
-                Tab.YOU -> YouScreen(viewModel = viewModel, segment = youSegment, onSegmentChange = { youSegment = it })
-            }
-        }
-
-        // Global back press to return to home if not on home
-        BackHandler(enabled = selected != Tab.HOME) {
-            selected = Tab.HOME
-        }
-    }
+    AppNavHost(
+        modifier = modifier,
+        deepLink = deepLink,
+        onDeepLinkHandled = onDeepLinkHandled,
+        home = { onNavigate -> HomeScreen(viewModel = viewModel, onNavigate = onNavigate) },
+        routine = { RoutinesScreen(viewModel = viewModel) },
+        workout = { WorkoutScreen(viewModel = viewModel) },
+        focus = { TrackerScreen(viewModel = viewModel) },
+        overlayContent = { overlay, onBack -> OverlayScreen(overlay, viewModel, onBack) }
+    )
 }

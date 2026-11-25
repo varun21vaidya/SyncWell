@@ -21,40 +21,29 @@ import org.robolectric.annotation.Config
 class NavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun barHasFiveTabsAndStatsGoalsAndConfigAreNotAmongThem() {
+    @Test fun barHasFourTabsAndStatsGoalsAndSettingsAreNotAmongThem() {
         compose.setContent { MyApplicationTheme { AppNavigationBar(Tab.HOME) {} } }
-        assertEquals(listOf("Home", "Routine", "Workout", "Focus", "You"), Tab.values().map { it.title })
+        assertEquals(listOf("Home", "Routine", "Workout", "Focus"), Tab.values().map { it.title })
         Tab.values().forEach { compose.onNodeWithTag("nav_tab_${it.ordinal}").assertIsDisplayed() }
-        compose.onNodeWithTag("nav_tab_5").assertDoesNotExist()
+        compose.onNodeWithTag("nav_tab_4").assertDoesNotExist()
     }
 
     @Test fun selectedTabIsMarkedAndTappingSelects() {
         val selected = mutableStateOf(Tab.HOME)
         compose.setContent { MyApplicationTheme { AppNavigationBar(selected.value) { selected.value = it } } }
         compose.onNodeWithTag("nav_tab_0").assertIsSelected()
-        compose.onNodeWithTag("nav_tab_4").performClick()
-        assertEquals(Tab.YOU, selected.value)
-        compose.onNodeWithTag("nav_tab_4").assertIsSelected()
+        compose.onNodeWithTag("nav_tab_3").performClick()
+        assertEquals(Tab.FOCUS, selected.value)
+        compose.onNodeWithTag("nav_tab_3").assertIsSelected()
     }
 
-    @Test fun youSegmentsAreStatsGoalsConfigAndTappingChangesTheSegment() {
-        val seg = mutableStateOf(YouSegment.STATS)
-        compose.setContent { MyApplicationTheme { YouSegmentBar(seg.value) { seg.value = it } } }
-        assertEquals(listOf("Stats", "Goals", "Config"), YouSegment.values().map { it.title })
-        compose.onNodeWithTag("you_segment_STATS").assertIsSelected()
-        compose.onNodeWithTag("you_segment_GOALS").performClick()
-        assertEquals(YouSegment.GOALS, seg.value)
-        compose.onNodeWithTag("you_segment_CONFIG").performClick()
-        assertEquals(YouSegment.CONFIG, seg.value)
-    }
-
-    @Test fun deepLinksToGoalsStatsAndConfigOpenYouOnThatSegment() {
-        assertEquals(Destination(Tab.YOU, YouSegment.GOALS), Destination.parse("goals"))
-        assertEquals(Destination(Tab.YOU, YouSegment.GOALS), Destination.parse("TASKS")) // the old name
-        assertEquals(Destination(Tab.YOU, YouSegment.STATS), Destination.parse("Stats"))
-        assertEquals(Destination(Tab.YOU, YouSegment.CONFIG), Destination.parse(" config "))
-        assertEquals(Destination(Tab.YOU, YouSegment.CONFIG), Destination.parse("SETTINGS"))
-        assertEquals(Destination(Tab.YOU), Destination.parse("you"))
+    @Test fun deepLinksToGoalsStatsAndSettingsOpenThatScreenOnHome() {
+        assertEquals(Destination(Tab.HOME, Overlay.GOALS), Destination.parse("goals"))
+        assertEquals(Destination(Tab.HOME, Overlay.GOALS), Destination.parse("TASKS")) // the old name
+        assertEquals(Destination(Tab.HOME, Overlay.STATS), Destination.parse("Stats"))
+        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse(" config "))
+        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse("SETTINGS"))
+        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse("you"))
     }
 
     @Test fun otherTabsAndUnknownNames() {

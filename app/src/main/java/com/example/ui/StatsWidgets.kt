@@ -192,3 +192,47 @@ fun WeeklyReviewCard(c: WeekComparison, goalsDone: Int, onDismiss: () -> Unit) {
         TextButton(onClick = onDismiss, modifier = Modifier.testTag("dismiss_weekly_review")) { Text("Hide", color = TextSecondary, fontWeight = FontWeight.Bold) }
     }
 }
+
+/** "0m", "45m", "1h 20m": today's focus time. */
+internal fun focusLabel(minutes: Int): String = when {
+    minutes <= 0 -> "0m"
+    minutes < 60 -> "${minutes}m"
+    else -> "${minutes / 60}h ${minutes % 60}m".replace(" 0m", "")
+}
+
+/** Everything about today in one glance, on top of Stats. Pure display: every value is passed in. */
+@Composable
+fun TodayStatsCard(
+    workoutDone: Boolean, workoutMinutes: Int, gymWeekCount: Int, gymTarget: Int, gymWeeks: Int,
+    proteinMet: Boolean, focusMinutes: Int, consistencyPct: Int, weightKg: Double?, targetKg: Double
+) {
+    StatsCard("Today", Modifier.testTag("today_stats_card")) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TodayTile("Workout", if (workoutDone) "Done" else "Not yet", if (workoutDone && workoutMinutes > 0) "$workoutMinutes min" else "Week $gymWeekCount/$gymTarget", if (workoutDone) Gym else TextSecondary, Modifier.weight(1f))
+            TodayTile("Protein", if (proteinMet) "Met" else "Not yet", "Diet rule", if (proteinMet) Progress else TextSecondary, Modifier.weight(1f))
+            TodayTile("Focus", focusLabel(focusMinutes), "effort today", if (focusMinutes > 0) Focus else TextSecondary, Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TodayTile("Consistency", "$consistencyPct%", "80% counts", if (consistencyPct >= 80) Progress else TextPrimary, Modifier.weight(1f))
+            TodayTile("Gym streak", "$gymWeeks wk", "Week $gymWeekCount/$gymTarget", Streak, Modifier.weight(1f))
+            TodayTile("Body weight", weightKg?.let { String.format(java.util.Locale.US, "%.1f kg", it) } ?: "Not logged",
+                when {
+                    weightKg == null -> "Log on Home"
+                    targetKg > 0 -> "Goal ${String.format(java.util.Locale.US, "%.1f", targetKg)}"
+                    else -> "Logged"
+                }, Water, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun TodayTile(label: String, value: String, sub: String, accent: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).background(Surface2).padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        Text(label, color = TextSecondary, fontSize = 11.sp, maxLines = 1)
+        Text(value, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(sub, color = TextMuted, fontSize = 10.sp, maxLines = 1)
+    }
+}
