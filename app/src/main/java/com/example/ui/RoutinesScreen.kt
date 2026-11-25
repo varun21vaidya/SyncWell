@@ -90,8 +90,6 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
     var showImport by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val importRequested by viewModel.routineImportRequested.collectAsState()
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
     // Onboarding asks for the import right after it finishes: open it with Replace preselected
     LaunchedEffect(importRequested) { if (importRequested) { showImport = true } }
 
@@ -182,16 +180,7 @@ fun RoutinesScreen(viewModel: SyncWellViewModel) {
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { showHelp = true }) { Icon(Icons.Default.Info, contentDescription = "How routines work", tint = Slate400) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { showImport = true }, modifier = Modifier.testTag("routine_import_btn")) { Text("Import with AI prompt", color = EmeraldGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-                TextButton(onClick = {
-                    scope.launch {
-                        runCatching { viewModel.routineExportText() }
-                            .onSuccess { clipboard.setText(androidx.compose.ui.text.AnnotatedString(it)); notice = "Copied. Paste it into your AI chat and write your change under \"My change:\"." }
-                            .onFailure { notice = "Could not copy your routine." }
-                    }
-                }, modifier = Modifier.testTag("routine_export_btn")) { Text("Copy my routine as text", color = Slate400, fontSize = 12.sp) }
-            }
+            RoutineImportButtons(viewModel, onImport = { showImport = true }, onNotice = { notice = it })
             notice?.let { Text(it, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)) }
 
             // Vacation Mode Alert status

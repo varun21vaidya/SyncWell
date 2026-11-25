@@ -17,4 +17,9 @@ class RoutineImportSheetTest {
         assertEquals(listOf("You already have a group called Every day."), duplicateGroupWarnings(result, listOf("every day", "Other")))
         assertTrue(duplicateGroupWarnings(result, emptyList()).isEmpty())
     }
+
+    @Test fun doneMessageCountsAndPluralises() {
+        assertEquals("Added 2 groups, 14 items", importDoneMessage(2, 14, replaced = false))
+        assertEquals("Replaced your routines with 1 group, 1 item", importDoneMessage(1, 1, replaced = true))
+    }
 }
