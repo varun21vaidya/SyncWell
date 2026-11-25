@@ -1652,6 +1652,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteRoutineTemplate(id: String) { viewModelScope.launch { dao.deleteRoutineTemplate(id) } }
 
+    // ROUTINE IMPORT (see RoutineImport and RoutineImportUseCase)
+    /** Supplement names the user has logged, in the order first logged, so the prompt can match auto-tick by name. */
+    suspend fun loggedSupplementNames(): List<String> =
+        dao.getAllSupplementLogs().sortedBy { it.loggedAt }.map { it.supplementName }.distinct()
+
+    suspend fun routineImportPrompt(): String = RoutineImport.prompt(loggedSupplementNames())
+
+    suspend fun routineExportText(): String =
+        RoutineImport.exportPrompt(loggedSupplementNames(), dao.getRoutineTemplates().sortedBy { it.name }, dao.getAllRoutineTemplateItems())
+
+    /** Saves the previewed groups, rebuilds today's list and returns (groups, items) saved. A failure leaves the old routine untouched. */
+    suspend fun importRoutines(groups: List<ImportedGroup>, replace: Boolean): Pair<Int, Int> {
+        val saved = RoutineImportUseCase(db, dao)(groups, replace)
+        rebuildTodayRoutine()
+        return saved
+    }
+
     fun saveTemplateItem(item: RoutineTemplateItem) { viewModelScope.launch { dao.insertRoutineTemplateItems(listOf(item)) } }
 
     fun deleteTemplateItem(id: String) { viewModelScope.launch { dao.deleteRoutineTemplateItem(id) } }
