@@ -54,6 +54,7 @@ class NavHostTest {
                     }
                 },
                 focus = { Text("Focus", Modifier.testTag("focus_content")) },
+                settings = { Text("Settings", Modifier.testTag("settings_content")) },
                 overlayContent = { o, back ->
                     Column(Modifier.testTag("overlay_${o.name}")) { Button(back, Modifier.testTag("overlay_back")) { Text("Back") } }
                 }
@@ -114,6 +115,15 @@ class NavHostTest {
         compose.onNodeWithTag("home_content").assertDoesNotExist()
         pressBack() // nothing deeper now: this one goes Home
         compose.onNodeWithTag("home_content").assertIsDisplayed()
+    }
+
+    @Test fun settingsIsATabAndBackFromItGoesHome() {
+        show()
+        compose.onNodeWithTag("nav_tab_4").performClick()
+        compose.onNodeWithTag("settings_content").assertExists()
+        compose.onNodeWithTag("home_content").assertDoesNotExist()
+        pressBack()
+        compose.onNodeWithTag("home_content").assertExists()
     }
 
     @Test fun aDeepLinkOpensTheFullScreenOnceAndIsMarkedHandled() {

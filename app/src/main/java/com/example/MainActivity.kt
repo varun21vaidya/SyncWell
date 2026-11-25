@@ -303,6 +303,7 @@ fun MainNavigationContainer(
         routine = { RoutinesScreen(viewModel = viewModel) },
         workout = { WorkoutScreen(viewModel = viewModel) },
         focus = { TrackerScreen(viewModel = viewModel) },
+        settings = { SettingsScreen(viewModel = viewModel) },
         overlayContent = { overlay, onBack -> OverlayScreen(overlay, viewModel, onBack) }
     )
 }

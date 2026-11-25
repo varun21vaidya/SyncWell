@@ -21,11 +21,11 @@ import org.robolectric.annotation.Config
 class NavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun barHasFourTabsAndStatsGoalsAndSettingsAreNotAmongThem() {
+    @Test fun barHasFiveTabsAndStatsAndGoalsAreNotAmongThem() {
         compose.setContent { MyApplicationTheme { AppNavigationBar(Tab.HOME) {} } }
-        assertEquals(listOf("Home", "Routine", "Workout", "Focus"), Tab.values().map { it.title })
+        assertEquals(listOf("Home", "Routine", "Workout", "Focus", "Settings"), Tab.values().map { it.title })
         Tab.values().forEach { compose.onNodeWithTag("nav_tab_${it.ordinal}").assertIsDisplayed() }
-        compose.onNodeWithTag("nav_tab_4").assertDoesNotExist()
+        compose.onNodeWithTag("nav_tab_5").assertDoesNotExist()
     }
 
     @Test fun selectedTabIsMarkedAndTappingSelects() {
@@ -37,13 +37,13 @@ class NavigationTest {
         compose.onNodeWithTag("nav_tab_3").assertIsSelected()
     }
 
-    @Test fun deepLinksToGoalsStatsAndSettingsOpenThatScreenOnHome() {
+    @Test fun deepLinksToGoalsAndStatsOpenThatScreenOnHomeAndSettingsIsATab() {
         assertEquals(Destination(Tab.HOME, Overlay.GOALS), Destination.parse("goals"))
         assertEquals(Destination(Tab.HOME, Overlay.GOALS), Destination.parse("TASKS")) // the old name
         assertEquals(Destination(Tab.HOME, Overlay.STATS), Destination.parse("Stats"))
-        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse(" config "))
-        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse("SETTINGS"))
-        assertEquals(Destination(Tab.HOME, Overlay.SETTINGS), Destination.parse("you"))
+        assertEquals(Destination(Tab.SETTINGS), Destination.parse(" config "))
+        assertEquals(Destination(Tab.SETTINGS), Destination.parse("SETTINGS"))
+        assertEquals(Destination(Tab.SETTINGS), Destination.parse("you"))
     }
 
     @Test fun otherTabsAndUnknownNames() {

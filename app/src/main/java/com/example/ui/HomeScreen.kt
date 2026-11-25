@@ -93,7 +93,6 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
             }
             HomeShortcut(com.example.R.drawable.ic_target, "Goals", "home_goals_btn") { onNavigate(Destination.GOALS) }
             HomeShortcut(com.example.R.drawable.ic_trophy, "Stats and achievements", "home_stats_btn") { onNavigate(Destination(Tab.HOME, Overlay.STATS)) }
-            HomeShortcut(null, "Settings", "home_settings_btn") { onNavigate(Destination(Tab.HOME, Overlay.SETTINGS)) }
         }
 
         if (activeRoutineItems.isEmpty()) {

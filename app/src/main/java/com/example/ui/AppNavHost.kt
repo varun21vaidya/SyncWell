@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import com.example.ui.theme.Background
 
 /**
- * The tab bar plus one screen at a time. A Home shortcut opens Stats, Goals or Settings as a full screen that
+ * The tab bar plus one screen at a time. A Home shortcut opens Stats or Goals as a full screen that
  * replaces the tab content (it is not drawn over it, so taps and the screen reader cannot reach what is behind it).
  * The screens are passed in, so the navigation can be tested without the real ones.
  */
@@ -28,6 +28,7 @@ fun AppNavHost(
     routine: @Composable () -> Unit,
     workout: @Composable () -> Unit,
     focus: @Composable () -> Unit,
+    settings: @Composable () -> Unit,
     overlayContent: @Composable (overlay: Overlay, onBack: () -> Unit) -> Unit
 ) {
     var selected by rememberSaveable { mutableStateOf(Tab.HOME) }
@@ -57,6 +58,7 @@ fun AppNavHost(
                 Tab.ROUTINE -> routine()
                 Tab.WORKOUT -> workout()
                 Tab.FOCUS -> focus()
+                Tab.SETTINGS -> settings()
             }
         }
     }

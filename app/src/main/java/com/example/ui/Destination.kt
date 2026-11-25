@@ -1,10 +1,10 @@
 package com.example.ui
 
-/** The four bottom tabs. Stats, Goals and Settings open from icons on Home as full screens. */
-enum class Tab(val title: String) { HOME("Home"), ROUTINE("Routine"), WORKOUT("Workout"), FOCUS("Focus") }
+/** The five bottom tabs. Stats and Goals open from icons on Home as full screens. */
+enum class Tab(val title: String) { HOME("Home"), ROUTINE("Routine"), WORKOUT("Workout"), FOCUS("Focus"), SETTINGS("Settings") }
 
 /** Full screens opened from the Home header, with a back arrow. */
-enum class Overlay(val title: String) { STATS("Stats"), GOALS("Goals"), SETTINGS("Settings") }
+enum class Overlay(val title: String) { STATS("Stats"), GOALS("Goals") }
 
 /** Where a tap or a deep link should land: a tab, and optionally a full screen on top of it. */
 data class Destination(val tab: Tab, val overlay: Overlay? = null) {
@@ -12,21 +12,22 @@ data class Destination(val tab: Tab, val overlay: Overlay? = null) {
         val HOME = Destination(Tab.HOME)
         val ROUTINE = Destination(Tab.ROUTINE)
         val FOCUS = Destination(Tab.FOCUS)
+        val SETTINGS = Destination(Tab.SETTINGS)
         val GOALS = Destination(Tab.HOME, Overlay.GOALS)
 
         /**
-         * Reads a destination name from a notification or deep link. Goals, Stats and Settings (and the older Tasks / Config / You
-         * names) open that screen on top of Home. Unknown names give null, so the app just opens where it was.
+         * Reads a destination name from a notification or deep link. Goals and Stats (and the older Tasks name) open that screen on top of Home;
+         * Settings (and the older Config / You names) is its own tab. Unknown names give null, so the app just opens where it was.
          */
         fun parse(name: String?): Destination? = when (name?.trim()?.uppercase()) {
             "HOME" -> HOME
             "ROUTINE" -> ROUTINE
             "WORKOUT" -> Destination(Tab.WORKOUT)
             "FOCUS" -> FOCUS
-            "YOU" -> Destination(Tab.HOME, Overlay.SETTINGS)
+            "YOU" -> SETTINGS
             "STATS" -> Destination(Tab.HOME, Overlay.STATS)
             "GOALS", "TASKS" -> GOALS
-            "CONFIG", "SETTINGS" -> Destination(Tab.HOME, Overlay.SETTINGS)
+            "CONFIG", "SETTINGS" -> SETTINGS
             else -> null
         }
     }
