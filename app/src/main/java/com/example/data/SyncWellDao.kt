@@ -502,6 +502,15 @@ interface SyncWellDao {
     @Query("SELECT * FROM goal_progress")
     suspend fun getAllGoalProgress(): List<GoalProgress>
 
+    @Query("SELECT * FROM goal_progress WHERE goalId = :goalId")
+    suspend fun getGoalProgress(goalId: String): List<GoalProgress>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoalProgressEntry(entry: GoalProgress)
+
+    @Query("SELECT * FROM tracker_sessions WHERE goalId = :goalId AND isDeleted = 0 AND durationMin IS NOT NULL")
+    suspend fun getFocusSessionsForGoal(goalId: String): List<TrackerSession>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoalProgress(entries: List<GoalProgress>)
 
