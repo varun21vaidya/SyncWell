@@ -1689,6 +1689,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         return errors
     }
 
+    fun setJourneyCharacter(id: String) { viewModelScope.launch { journey.setCharacter(id) } }
+
+    fun claimJourneyReward(goalId: String) { viewModelScope.launch { journey.claimReward(goalId, DayBoundaryManager.currentTargetDate.value) } }
+
+    suspend fun goalProgress(goal: Goal): Double = journey.progressOf(goal)
+
     fun addGoalProgress(goalId: String, amount: Double, note: String?) {
         viewModelScope.launch { journey.addProgress(goalId, DayBoundaryManager.currentTargetDate.value, amount, note) }
     }

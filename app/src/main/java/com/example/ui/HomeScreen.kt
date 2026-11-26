@@ -107,6 +107,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
         }
         StreakChip(activeStreak, completedCount, activeRoutineItems.size, isVacationActive, level, weekMarks)
         NextStampLine(nextStamp)
+        JourneyStrip(viewModel) { onNavigate(Destination.JOURNEY) }
         if (activeRoutineItems.isNotEmpty()) {
             UpNextCard(UpNextRule.next(dayItems, nowMinutes)) { next ->
                 activeRoutineItems.firstOrNull { it.id == next.id }?.let { viewModel.toggleRoutineItem(it) }

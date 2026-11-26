@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 
-/** Stats or Goals as a full screen with a back arrow, opened from the Home header. */
+/** Stats, Goals or the Journey as a full screen with a back arrow, opened from the Home header. */
 @Composable
 fun OverlayScreen(overlay: Overlay, viewModel: SyncWellViewModel, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Background).testTag("overlay_${overlay.name}")) {
@@ -36,6 +36,7 @@ fun OverlayScreen(overlay: Overlay, viewModel: SyncWellViewModel, onBack: () -> 
             when (overlay) {
                 Overlay.STATS -> AnalyticsScreen(viewModel = viewModel)
                 Overlay.GOALS -> TodosScreen(viewModel = viewModel)
+                Overlay.JOURNEY -> JourneyScreen(viewModel = viewModel)
             }
         }
     }

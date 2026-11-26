@@ -71,6 +71,11 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
         return manual + focus
     }
 
+    /** What is logged toward a goal inside its window: manual entries plus linked focus hours. */
+    suspend fun progressOf(goal: Goal): Double = GoalReview.progress(goal.spec(), entriesOf(goal))
+
+    suspend fun setCharacter(id: String) = db.withTransaction { dao.getJourneyState()?.let { dao.upsertJourneyState(it.copy(characterId = id)) } }
+
     /**
      * Decides every pending goal from the logged data, so opening on Monday or on Wednesday gives the same result.
      * A missed commitment sends the character to the start of its region. Weekly goals are never penalised. Returns the goals that changed.

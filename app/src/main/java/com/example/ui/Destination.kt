@@ -4,7 +4,7 @@ package com.example.ui
 enum class Tab(val title: String) { HOME("Home"), ROUTINE("Routine"), WORKOUT("Workout"), FOCUS("Focus"), SETTINGS("Settings") }
 
 /** Full screens opened from the Home header, with a back arrow. */
-enum class Overlay(val title: String) { STATS("Stats"), GOALS("Goals") }
+enum class Overlay(val title: String) { STATS("Stats"), GOALS("Goals"), JOURNEY("Journey") }
 
 /** Where a tap or a deep link should land: a tab, and optionally a full screen on top of it. */
 data class Destination(val tab: Tab, val overlay: Overlay? = null) {
@@ -14,6 +14,7 @@ data class Destination(val tab: Tab, val overlay: Overlay? = null) {
         val FOCUS = Destination(Tab.FOCUS)
         val SETTINGS = Destination(Tab.SETTINGS)
         val GOALS = Destination(Tab.HOME, Overlay.GOALS)
+        val JOURNEY = Destination(Tab.HOME, Overlay.JOURNEY)
 
         /**
          * Reads a destination name from a notification or deep link. Goals and Stats (and the older Tasks name) open that screen on top of Home;
@@ -27,6 +28,7 @@ data class Destination(val tab: Tab, val overlay: Overlay? = null) {
             "YOU" -> SETTINGS
             "STATS" -> Destination(Tab.HOME, Overlay.STATS)
             "GOALS", "TASKS" -> GOALS
+            "JOURNEY" -> JOURNEY
             "CONFIG", "SETTINGS" -> SETTINGS
             else -> null
         }

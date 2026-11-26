@@ -1,0 +1,62 @@
+package com.example.ui
+
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import com.example.data.JourneyState
+import com.example.domain.JourneyCharacters
+import com.example.domain.JourneyMap
+import com.example.ui.theme.MyApplicationTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.io.File
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], qualifiers = "w324dp-h760dp-xxhdpi")
+class JourneyScreenPartsTest {
+    @get:Rule val compose = createComposeRule()
+    private val regions = JourneyMap.parse(File("src/main/res/raw/adventure_route.json").readText())
+
+    @Test fun startingAsksForACharacterAndStartsWithTheChosenOne() {
+        var started: String? = null
+        compose.setContent { MyApplicationTheme { JourneyStart(null, resuming = false) { started = it } } }
+        compose.onNodeWithTag("journey_char_emma").performClick()
+        compose.onNodeWithTag("journey_start").performClick()
+        compose.waitForIdle()
+        assertEquals("emma", started)
+    }
+
+    @Test fun resumingExplainsTheRestartAndKeepsTheOldCharacter() {
+        var started: String? = null
+        compose.setContent { MyApplicationTheme { JourneyStart("lee", resuming = true) { started = it } } }
+        compose.onNodeWithText("Resume the Journey").performClick()
+        compose.waitForIdle()
+        assertEquals("lee", started)
+    }
+
+    @Test fun theMapShowsTheCharacterOnAPaintedRegion() {
+        compose.setContent { MyApplicationTheme { JourneyMapCard(regions[1], 3, JourneyCharacters.byId("ivy")) } }
+        compose.onNodeWithTag("journey_character").assertExists()
+    }
+
+    @Test fun theSummitHasNoArtYetAndStillDrawsTheCharacter() {
+        compose.setContent { MyApplicationTheme { JourneyMapCard(regions.last(), 0, JourneyCharacters.byId("max")) } }
+        compose.onNodeWithTag("journey_character").assertExists()
+    }
+
+    @Test fun theStripTellsWhereYouAreOrInvitesYouAndNeverSaysStep() {
+        assertTrue(stripText(null, regions).startsWith("Try the Journey"))
+        assertEquals("Journey paused. Tap to resume", stripText(JourneyState(enabled = false), regions))
+        val text = stripText(JourneyState(enabled = true, regionIndex = 2, stepInRegion = 9), regions)
+        assertEquals("Ironwood Outpost · Day 9 of 14 · Gate on day 14", text)
+        assertFalse(text.contains("step", ignoreCase = true))
+        assertEquals("Ironwood Outpost · Day 3 of 14 · Camp on day 7", stripText(JourneyState(enabled = true, regionIndex = 2, stepInRegion = 3), regions))
+    }
+}

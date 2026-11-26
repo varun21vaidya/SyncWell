@@ -1,0 +1,163 @@
+package com.example.ui
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.R
+import com.example.data.Goal
+import com.example.data.JourneyState
+import com.example.domain.JourneyCharacter
+import com.example.domain.JourneyCharacters
+import com.example.domain.JourneyMap
+import com.example.domain.RegionDef
+import com.example.domain.RegionView
+import com.example.service.DayBoundaryManager
+import com.example.ui.theme.*
+import com.example.viewmodel.SyncWellViewModel
+
+/** The Journey: opt-in start, then the map with the character, this region's commitments and the regions list. */
+@Composable
+fun JourneyScreen(viewModel: SyncWellViewModel) {
+    val state by viewModel.journeyState.collectAsState()
+    val goals by viewModel.journeyGoals.collectAsState()
+    val context = LocalContext.current
+    val regions = remember { JourneyMap.parse(context.resources.openRawResource(R.raw.adventure_route).bufferedReader().use { it.readText() }) }
+    var editing by remember { mutableStateOf(false) }
+    val s = state
+
+    if (editing && s != null) {
+        CommitmentEditor(s.regionIndex, goals.filter { it.kind == "COMMITMENT" }, onSave = { viewModel.saveCommitment(it) }, onClose = { editing = false })
+        return
+    }
+    Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (s == null || !s.enabled) JourneyStart(s?.characterId, resuming = s != null) { id -> viewModel.setJourneyEnabled(true, id) }
+        else JourneyTrail(viewModel, s, regions, goals, onAddCommitment = { editing = true })
+    }
+}
+
+@Composable
+internal fun JourneyStart(characterId: String?, resuming: Boolean, onStart: (String) -> Unit) {
+    var picked by remember { mutableStateOf(characterId ?: JourneyCharacters.all.first().id) }
+    Card(colors = CardDefaults.cardColors(containerColor = Surface1), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(if (resuming) "Welcome back" else "Walk your routine", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text(
+                if (resuming) "You paused the Journey, so you start again at the beginning of your current region. Earlier regions, stamps and badges stay."
+                else "A character walks a painted map, one day for every day you reach 80%. Missed days can send you back to the last camp, never further than your current region. It is optional and you can pause it any time.",
+                color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp
+            )
+            Text("Choose your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            CharacterPicker(picked) { picked = it }
+            Button(
+                onClick = { onStart(picked) }, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("journey_start"), shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Progress, contentColor = OnProgress)
+            ) { Text(if (resuming) "Resume the Journey" else "Start the Journey", fontWeight = FontWeight.Black) }
+        }
+    }
+}
+
+@Composable
+private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onAddCommitment: () -> Unit) {
+    val today by DayBoundaryManager.currentTargetDate.collectAsState()
+    val region = regions.getOrElse(s.regionIndex) { regions.last() }
+    Column {
+        Text(region.name, color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.testTag("journey_region"))
+        Text(
+            JourneyMap.dayLabel(region, s.stepInRegion) + (JourneyMap.nextMilestone(region, s.stepInRegion)?.let { " · $it" } ?: ""),
+            color = TextSecondary, fontSize = 14.sp, modifier = Modifier.testTag("journey_day")
+        )
+        if (region.intro.isNotBlank()) Text(region.intro, color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+    JourneyMapCard(region, s.stepInRegion, JourneyCharacters.byId(s.characterId))
+    CommitmentsCard(viewModel, goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
+    Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
+    RegionsList(regions, s.regionIndex, s.furthestRegion, today)
+    TextButton(onClick = { viewModel.setJourneyEnabled(false) }, modifier = Modifier.testTag("journey_pause")) { Text("Pause the Journey", color = TextMuted) }
+}
+
+/** The region image with the character on its day. Step markers are baked into the painted images, so only the character is drawn on them. */
+@Composable
+internal fun JourneyMapCard(region: RegionDef, step: Int, character: JourneyCharacter) {
+    val context = LocalContext.current
+    val reduced = LocalReducedMotion.current
+    val (tx, ty) = JourneyMap.positionOf(region, step)
+    val x by animateFloatAsState(tx, if (reduced) snap() else tween(700), label = "journey_x")
+    val y by animateFloatAsState(ty, if (reduced) snap() else tween(700), label = "journey_y")
+    val resId = remember(region.image) { region.image?.let { context.resources.getIdentifier(it, "drawable", context.packageName) } ?: 0 }
+    BoxWithConstraints(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(20.dp)).background(Surface1).testTag("journey_map")) {
+        if (resId != 0) Image(painterResource(resId), contentDescription = "Map of ${region.name}", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        else PlaceholderTrail(region)
+        val size = 36.dp
+        CharacterSprite(character, size, Modifier.offset(maxWidth * x - size / 2, maxHeight * y - size).testTag("journey_character"))
+    }
+}
+
+/** Stand-in for a region that has no painted image yet: the trail's points on a dark gradient. */
+@Composable
+private fun PlaceholderTrail(region: RegionDef) {
+    Canvas(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Surface3, Surface1)))) {
+        region.points.forEach { p ->
+            drawCircle(if (p.checkpoint) Streak else TextMuted, radius = if (p.checkpoint) 9f else 6f, center = Offset(p.x * size.width, p.y * size.height))
+        }
+    }
+}
+
+/** Placeholder sprite until the painted characters exist: a coloured disc with the initial. */
+@Composable
+fun CharacterSprite(character: JourneyCharacter, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    Box(modifier.size(size).clip(CircleShape).background(Color(character.color)), contentAlignment = Alignment.Center) {
+        Text(character.name.take(1), color = Background, fontWeight = FontWeight.Black, fontSize = (size.value * 0.5f).sp)
+    }
+}
+
+@Composable
+private fun CharacterPicker(selectedId: String, onPick: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        JourneyCharacters.all.forEach { c ->
+            val selected = c.id == selectedId
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (selected) Surface3 else Color.Transparent).clickable { onPick(c.id) }.padding(vertical = 6.dp).testTag("journey_char_${c.id}")) {
+                CharacterSprite(c, 36.dp)
+                Text(c.name, color = if (selected) Progress else TextMuted, fontSize = 10.sp, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RegionsList(regions: List<RegionDef>, current: Int, furthest: Int, today: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Regions", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        regions.forEach { r ->
+            val view = JourneyMap.view(r, current, furthest, today)
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Surface1).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(r.name, color = if (view == RegionView.LOCKED) TextMuted else TextPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(when (view) { RegionView.CURRENT -> "You are here"; RegionView.DONE -> "Crossed"; RegionView.LOCKED -> "Ahead" }, color = if (view == RegionView.CURRENT) Progress else TextMuted, fontSize = 12.sp)
+            }
+        }
+    }
+}
