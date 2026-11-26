@@ -493,6 +493,12 @@ interface SyncWellDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertJourneyState(state: JourneyState)
 
+    @Query("SELECT * FROM journey_state WHERE id = 1")
+    fun getJourneyStateFlow(): Flow<JourneyState?>
+
+    @Query("SELECT * FROM goals ORDER BY windowEnd")
+    fun getGoalsFlow(): Flow<List<Goal>>
+
     @Query("SELECT * FROM goals")
     suspend fun getAllGoals(): List<Goal>
 

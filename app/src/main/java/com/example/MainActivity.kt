@@ -285,6 +285,7 @@ fun MainNavigationContainer(
                 viewModel.cancelAttentionCheck()
                 // The process can outlive midnight, so re-read today's date on every resume
                 com.example.service.DayBoundaryManager.refreshTargetDate()
+                viewModel.syncJourney()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

@@ -1652,6 +1652,36 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteRoutineTemplate(id: String) { viewModelScope.launch { dao.deleteRoutineTemplate(id) } }
 
+    // JOURNEY (see JourneyRules and JourneyUseCase)
+    private val journey = JourneyUseCase(db, dao)
+    val journeyState: StateFlow<JourneyState?> = dao.getJourneyStateFlow().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val journeyGoals: StateFlow<List<Goal>> = dao.getGoalsFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** On every resume: applies the days that have ended since last time, then decides goals whose window has passed. A failure is logged and leaves the data as it was. */
+    fun syncJourney() {
+        viewModelScope.launch {
+            val today = DayBoundaryManager.currentTargetDate.value
+            try { journey.sync(today); journey.review(today) } catch (e: Exception) { Log.e("Journey", "sync failed", e) }
+        }
+    }
+
+    fun setJourneyEnabled(on: Boolean, characterId: String = "max") {
+        viewModelScope.launch { if (on) journey.enable(DayBoundaryManager.currentTargetDate.value, characterId) else journey.disable() }
+    }
+
+    /** Saves a commitment for the character's current region. Returns what blocks it, or an empty list once saved. */
+    suspend fun saveCommitment(draft: CommitmentDraft): List<DraftError> {
+        val region = journeyState.value?.regionIndex ?: return listOf(DraftError.WINDOW)
+        val existing = journeyGoals.value.count { it.kind == "COMMITMENT" && it.regionIndex == region && it.status != "MISSED" }
+        val errors = CommitmentRules.validate(draft, region, existing)
+        if (errors.isEmpty()) journey.saveGoal(CommitmentRules.toGoal(draft, UUID.randomUUID().toString(), region, DayBoundaryManager.currentTargetDate.value))
+        return errors
+    }
+
+    fun addGoalProgress(goalId: String, amount: Double, note: String?) {
+        viewModelScope.launch { journey.addProgress(goalId, DayBoundaryManager.currentTargetDate.value, amount, note) }
+    }
+
     // ROUTINE IMPORT (see RoutineImport and RoutineImportUseCase)
     private val _routineImportRequested = MutableStateFlow(false)
     /** Set by onboarding's "Import my own routine with AI": the Routine tab opens the import with Replace preselected. */
