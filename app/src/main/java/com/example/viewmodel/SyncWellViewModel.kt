@@ -1667,6 +1667,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     // JOURNEY (see JourneyRules and JourneyUseCase)
     private val journey = JourneyUseCase(db, dao)
     val journeyState: StateFlow<JourneyState?> = dao.getJourneyStateFlow().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val journeyPassport: StateFlow<List<PassportStamp>> = dao.getPassportFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val journeyGoals: StateFlow<List<Goal>> = dao.getGoalsFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** On every resume: applies the days that have ended since last time, then decides goals whose window has passed. A failure is logged and leaves the data as it was. */

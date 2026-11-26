@@ -89,20 +89,27 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
      * A missed commitment sends the character to the start of its region. Weekly goals are never penalised. Returns the goals that changed.
      */
     suspend fun review(today: String): List<Goal> = db.withTransaction {
-        val changed = mutableListOf<Goal>()
-        var state = dao.getJourneyState()
-        for (goal in dao.getAllGoals().filter { it.status == "PENDING" }.sortedBy { it.windowEnd }) {
+        dao.getAllGoals().filter { it.status == "PENDING" }.sortedBy { it.windowEnd }.mapNotNull { goal ->
             val status = GoalReview.status(goal.spec(), entriesOf(goal), today)
-            if (status == GoalStatus.PENDING) continue
-            val updated = goal.copy(status = status.name)
-            dao.insertGoals(listOf(updated))
-            changed += updated
-            val s = state
-            if (status == GoalStatus.MISSED && goal.kind == "COMMITMENT" && s != null && s.enabled && goal.regionIndex == s.regionIndex) {
-                state = s.with(JourneyRules.commitmentMissed(s.position())).also { dao.upsertJourneyState(it) }
-            }
+            if (status == GoalStatus.PENDING) null else settle(goal, status, today)
         }
-        changed
+    }
+
+    /** Records one decided goal: saves its status, stamps the passport for a met commitment, sends the character back for a missed one. */
+    private suspend fun settle(goal: Goal, status: GoalStatus, today: String): Goal {
+        val updated = goal.copy(status = status.name)
+        dao.insertGoals(listOf(updated))
+        if (goal.kind == "COMMITMENT") {
+            if (status == GoalStatus.MET) dao.insertPassportStamps(listOf(PassportStamp("commit-${goal.id}", "COMMITMENT", goal.regionIndex ?: 0, today, goal.title)))
+            else sendBackToRegionStart(goal)
+        }
+        return updated
+    }
+
+    /** A missed commitment sends the character to the start of its region, but only while it is still in that region. */
+    private suspend fun sendBackToRegionStart(goal: Goal) {
+        val s = dao.getJourneyState()?.takeIf { it.enabled && goal.regionIndex == it.regionIndex } ?: return
+        dao.upsertJourneyState(s.with(JourneyRules.commitmentMissed(s.position())))
     }
 
     /** True when every commitment set for the region is met. With none set (Home Start) the gate is open. */
@@ -113,7 +120,7 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
         val s = dao.getJourneyState()?.takeIf { it.enabled } ?: return@withTransaction false
         val next = JourneyRules.crossGate(s.position(), commitmentsMet(s.regionIndex)) ?: return@withTransaction false
         dao.upsertJourneyState(s.with(next))
-        dao.insertPassportStamps(listOf(PassportStamp(UUID.randomUUID().toString(), "REGION", s.regionIndex, today, regionName)))
+        dao.insertPassportStamps(listOf(PassportStamp("region-${s.regionIndex}", "REGION", s.regionIndex, today, regionName))) // a fixed id, so crossing twice cannot stamp twice
         true
     }
 

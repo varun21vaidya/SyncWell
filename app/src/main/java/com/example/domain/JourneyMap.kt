@@ -24,6 +24,9 @@ data class RegionDef(
 
 enum class RegionView { CURRENT, DONE, LOCKED }
 
+/** The painted weather of a region, used for its stamp and the light overlay. A region with no weather tag is clear. */
+enum class Weather { SUN, RAIN, SNOW }
+
 object JourneyMap {
 
     fun parse(json: String): List<RegionDef> {
@@ -44,6 +47,12 @@ object JourneyMap {
                 }
             )
         }
+    }
+
+    fun weatherOf(region: RegionDef?): Weather = when (region?.weather) {
+        "light_rain_particles" -> Weather.RAIN
+        "light_snow_particles" -> Weather.SNOW
+        else -> Weather.SUN
     }
 
     /** Where the sprite stands: on the point of that step. Step 0 (region start) is just below the first point, kept on the image. */

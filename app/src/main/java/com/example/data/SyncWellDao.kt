@@ -523,6 +523,9 @@ interface SyncWellDao {
     @Query("SELECT * FROM passport")
     suspend fun getAllPassportStamps(): List<PassportStamp>
 
+    @Query("SELECT * FROM passport ORDER BY earnedAt, id")
+    fun getPassportFlow(): Flow<List<PassportStamp>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPassportStamps(stamps: List<PassportStamp>)
 

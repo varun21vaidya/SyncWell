@@ -71,4 +71,12 @@ class JourneyMapTest {
         assertEquals("max", JourneyCharacters.byId("nobody").id)
         assertEquals("ivy", JourneyCharacters.byId("ivy").id)
     }
+
+    @Test fun weatherComesFromTheRegionTag() {
+        assertEquals(Weather.SUN, JourneyMap.weatherOf(regions[0]))
+        assertEquals(Weather.RAIN, JourneyMap.weatherOf(regions[3]))
+        assertEquals(Weather.SNOW, JourneyMap.weatherOf(regions[4]))
+        assertEquals(Weather.SUN, JourneyMap.weatherOf(null))
+    }
 }
+

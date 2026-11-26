@@ -97,6 +97,8 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
         if (s.stepInRegion >= region.steps) WardenCard(region, commitments, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
         CommitmentsCard(viewModel, commitments, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
     }
+    val passport by viewModel.journeyPassport.collectAsState()
+    PassportCard(passport, regions)
     var editingWhy by remember { mutableStateOf(false) }
     AmbitionCard(s) { editingWhy = true }
     val reminders by viewModel.journeyReminders.collectAsState()

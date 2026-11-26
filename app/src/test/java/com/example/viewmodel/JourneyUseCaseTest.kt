@@ -111,7 +111,8 @@ class JourneyUseCaseTest {
         assertTrue(journey.crossGate("2026-11-26", "Ironwood Outpost"))
         val s = dao.getJourneyState()!!
         assertEquals(3, s.regionIndex); assertEquals(0, s.stepInRegion); assertEquals(3, s.furthestRegion)
-        assertEquals("Ironwood Outpost", dao.getAllPassportStamps().single().label)
+        assertEquals("Ironwood Outpost", dao.getAllPassportStamps().single { it.kind == "REGION" }.label)
+        assertEquals(setOf("a", "b"), dao.getAllPassportStamps().filter { it.kind == "COMMITMENT" }.map { it.label }.toSet())
         assertFalse(journey.crossGate("2026-11-26", "x")) // no longer at a gate
     }
 
