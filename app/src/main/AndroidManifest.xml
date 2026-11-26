@@ -30,6 +30,9 @@
         <receiver android:name=".service.ReminderReceiver"
             android:exported="false" />
 
+        <receiver android:name=".service.JourneyReminderReceiver"
+            android:exported="false" />
+
         <receiver android:name=".service.BootReceiver"
             android:exported="true">
             <intent-filter>

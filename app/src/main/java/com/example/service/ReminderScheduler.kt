@@ -13,7 +13,6 @@ import androidx.core.content.ContextCompat
 import com.example.MainActivity
 import com.example.R
 import com.example.data.AppDatabase
-import com.example.data.RoutineSchedule
 import com.example.domain.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -29,7 +28,8 @@ object ReminderScheduler {
     private const val REQ_EVENING = 9102
     private const val NOTIFICATION_ID = 2001
 
-    fun isEnabled(context: Context) = prefs(context).getBoolean("reminders_enabled", false)
+    /** The two gentle reminders are replaced by the Journey's five while those are switched on. */
+    fun isEnabled(context: Context) = prefs(context).getBoolean("reminders_enabled", false) && !JourneyReminderScheduler.settings(context).master
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -84,11 +84,7 @@ object ReminderScheduler {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val today = sdf.format(Date())
 
-        val routine = dao.getDailyRoutineDirectly(today)
-        val items = routine?.let { dao.getDailyRoutineItems(it.id) } ?: emptyList()
-        val done = items.count { it.isDone }
-        val total = if (items.isNotEmpty()) items.size
-        else RoutineSchedule.templatesForDate(dao.getRoutineTemplates(), today).sumOf { dao.getRoutineTemplateItems(it.id).size } // app not opened yet today
+        val (done, total) = RoutineProgress.counts(dao, today)
 
         val history = dao.getAllDailyAnalytics()
         val streak = history.firstOrNull { it.dateKey == today }?.streakValue

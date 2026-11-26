@@ -35,6 +35,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 ReminderScheduler.scheduleBackup9PM(context.applicationContext)
                 ReminderScheduler.scheduleAll(context.applicationContext)
+                JourneyReminderScheduler.scheduleAll(context.applicationContext)
             } catch (e: Exception) {
                 Log.e("SyncWell", "Reschedule after boot failed", e)
             } finally {

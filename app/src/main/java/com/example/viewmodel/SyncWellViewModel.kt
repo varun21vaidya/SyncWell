@@ -11,6 +11,7 @@ import com.example.service.AnalyticsComputationService
 import com.example.service.CloudBackupService
 import com.example.service.DailyBackupReceiver
 import com.example.service.DriveConsentRequiredException
+import com.example.service.JourneyReminderScheduler
 import com.example.service.DayBoundaryManager
 import com.example.service.GoalService
 import com.example.service.ReminderScheduler
@@ -1677,7 +1678,19 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setJourneyEnabled(on: Boolean, characterId: String = "max") {
-        viewModelScope.launch { if (on) journey.enable(DayBoundaryManager.currentTargetDate.value, characterId) else journey.disable() }
+        viewModelScope.launch {
+            if (on) journey.enable(DayBoundaryManager.currentTargetDate.value, characterId) else journey.disable()
+            JourneyReminderScheduler.scheduleAll(getApplication()) // the five reminders follow the Journey on or off
+        }
+    }
+
+    private val _journeyReminders = MutableStateFlow(JourneyReminderScheduler.settings(application))
+    val journeyReminders: StateFlow<JourneyReminderSettings> = _journeyReminders.asStateFlow()
+
+    fun saveJourneyReminders(s: JourneyReminderSettings) {
+        _journeyReminders.value = s
+        if (s.master) requestNotificationPermission() // the reminders are silent until Android 13+ permission is granted
+        viewModelScope.launch { JourneyReminderScheduler.save(getApplication(), s) }
     }
 
     /** Saves a commitment for the character's current region. Returns what blocks it, or an empty list once saved. */

@@ -99,6 +99,8 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
     }
     var editingWhy by remember { mutableStateOf(false) }
     AmbitionCard(s) { editingWhy = true }
+    val reminders by viewModel.journeyReminders.collectAsState()
+    JourneyRemindersCard(reminders) { viewModel.saveJourneyReminders(it) }
     if (editingWhy) AmbitionDialog(s.ambitionText, s.identityText, onSave = { a, i -> viewModel.saveAmbition(a, i) }, onClose = { editingWhy = false })
     Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
