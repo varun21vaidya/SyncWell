@@ -1689,6 +1689,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         return errors
     }
 
+    // Per-device UI memory: reviews the user has read, and where the character stood when the Journey was last open (so the walk can animate)
+    private val _seenReviews = MutableStateFlow(prefs.getStringSet("journey_seen_reviews", emptySet())?.toSet() ?: emptySet())
+    val journeySeenReviews: StateFlow<Set<String>> = _seenReviews.asStateFlow()
+
+    fun markReviewSeen(goalId: String) {
+        _seenReviews.value = _seenReviews.value + goalId
+        prefs.edit().putStringSet("journey_seen_reviews", _seenReviews.value).apply()
+    }
+
+    /** (region, day) from the last time the Journey was open, or null. */
+    fun journeyLastSeen(): Pair<Int, Int>? =
+        prefs.getString("journey_seen_pos", null)?.split(":")?.takeIf { it.size == 2 }?.let { p -> p[0].toIntOrNull()?.let { it to (p[1].toIntOrNull() ?: 0) } }
+
+    fun markJourneySeen(region: Int, step: Int) { prefs.edit().putString("journey_seen_pos", "$region:$step").apply() }
+
+    fun crossJourneyGate(regionName: String) { viewModelScope.launch { journey.crossGate(DayBoundaryManager.currentTargetDate.value, regionName) } }
+
     fun setJourneyCharacter(id: String) { viewModelScope.launch { journey.setCharacter(id) } }
 
     fun claimJourneyReward(goalId: String) { viewModelScope.launch { journey.claimReward(goalId, DayBoundaryManager.currentTargetDate.value) } }

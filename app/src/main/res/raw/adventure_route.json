@@ -24,7 +24,14 @@
         }
       ],
       "intro": "Your first steps. Three days, no penalties, and a short tour of how the trail works.",
-      "releaseDate": "2026-11-01"
+      "releaseDate": "2026-11-01",
+      "warden": {
+        "name": "Pip",
+        "personality": "a cheerful gatekeeper who counts every small win",
+        "challenge": "Three days walked. Let me see what you carry through the gate.",
+        "open": "The gate is open. Welcome to the trail.",
+        "closed": "Walk the three days and come back."
+      }
     },
     {
       "image": "region_verdant_trail",
@@ -74,7 +81,14 @@
         }
       ],
       "intro": "A green trail through the woods. Pick a commitment and walk it in seven days.",
-      "releaseDate": "2026-11-01"
+      "releaseDate": "2026-11-01",
+      "warden": {
+        "name": "Fern",
+        "personality": "a quiet trail keeper who notices steady habits",
+        "challenge": "The trail asks one thing of you. Show me what you set out to do.",
+        "open": "You kept your word. The way on is open.",
+        "closed": "Not quite yet. Keep going, the trail will wait."
+      }
     },
     {
       "image": "region_ironwood_outpost",
@@ -166,7 +180,14 @@
         }
       ],
       "intro": "A timber outpost on the ridge. Two weeks, with a camp halfway.",
-      "releaseDate": "2026-11-01"
+      "releaseDate": "2026-11-01",
+      "warden": {
+        "name": "Brant",
+        "personality": "a plain-spoken outpost sergeant who respects effort",
+        "challenge": "Two weeks on the ridge. Let us look at your commitments.",
+        "open": "Well held. Pass through, the ridge is behind you.",
+        "closed": "Still work to do on the list. Finish it and the gate opens."
+      }
     },
     {
       "image": "region_tidewater_coast",
@@ -259,7 +280,14 @@
       ],
       "weatherOverlay": "light_rain_particles",
       "intro": "Salt air and light rain along the coast. Two weeks, camp on day 7.",
-      "releaseDate": "2026-11-01"
+      "releaseDate": "2026-11-01",
+      "warden": {
+        "name": "Marin",
+        "personality": "a calm harbour master who reads the tide and the log",
+        "challenge": "The log says you have been busy. Read me your commitments.",
+        "open": "Every line met. The harbour lets you through.",
+        "closed": "A few lines are open. Close them and the gate lifts."
+      }
     },
     {
       "image": "region_obsidian_peak",
@@ -352,7 +380,14 @@
       ],
       "weatherOverlay": "light_snow_particles",
       "intro": "Snow and black rock. The last climb before the Summit region.",
-      "releaseDate": "2026-11-01"
+      "releaseDate": "2026-11-01",
+      "warden": {
+        "name": "Kael",
+        "personality": "a steady peak guide who climbs without hurry",
+        "challenge": "The last climb before the Summit region. Show me what you built.",
+        "open": "You built it. Climb on.",
+        "closed": "The peak is patient. Finish your commitments first."
+      }
     },
     {
       "image": null,
@@ -445,7 +480,14 @@
           "y": 0.115,
           "checkpoint": false
         }
-      ]
+      ],
+      "warden": {
+        "name": "Aurelia",
+        "personality": "the summit warden, proud and kind",
+        "challenge": "You have walked sixty-six days. Tell me what you made of them.",
+        "open": "The habit is yours. Step through.",
+        "closed": "Almost there. Meet your commitments to cross."
+      }
     }
   ],
   "markersBakedIntoImages": true

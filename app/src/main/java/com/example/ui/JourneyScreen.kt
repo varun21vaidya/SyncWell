@@ -35,6 +35,8 @@ import com.example.domain.JourneyCharacters
 import com.example.domain.JourneyMap
 import com.example.domain.RegionDef
 import com.example.domain.RegionView
+import com.example.domain.SetbackNote
+import kotlinx.coroutines.delay
 import com.example.service.DayBoundaryManager
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
@@ -83,21 +85,38 @@ internal fun JourneyStart(characterId: String?, resuming: Boolean, onStart: (Str
 @Composable
 private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onAddCommitment: () -> Unit) {
     val today by DayBoundaryManager.currentTargetDate.collectAsState()
-    val region = regions.getOrElse(s.regionIndex) { regions.last() }
-    Column {
-        Text(region.name, color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Black, modifier = Modifier.testTag("journey_region"))
-        Text(
-            JourneyMap.dayLabel(region, s.stepInRegion) + (JourneyMap.nextMilestone(region, s.stepInRegion)?.let { " · $it" } ?: ""),
-            color = TextSecondary, fontSize = 14.sp, modifier = Modifier.testTag("journey_day")
-        )
-        if (region.intro.isNotBlank()) Text(region.intro, color = TextMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    val seen by viewModel.journeySeenReviews.collectAsState()
+    val region = regions.getOrNull(s.regionIndex) // null once the Summit gate is crossed and no later region is bundled yet
+    if (region == null) SummitCard() else {
+        val commitments = goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }
+        val walk = rememberWalk(viewModel, s, region)
+        JourneyHeader(region, s.stepInRegion)
+        walk.note?.let { SetbackBanner(it) }
+        ReviewCard(viewModel, goals, seen)
+        JourneyMapCard(region, walk.shownStep, JourneyCharacters.byId(s.characterId))
+        if (s.stepInRegion >= region.steps) WardenCard(region, commitments, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
+        CommitmentsCard(viewModel, commitments, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
     }
-    JourneyMapCard(region, s.stepInRegion, JourneyCharacters.byId(s.characterId))
-    CommitmentsCard(viewModel, goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
     Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
     RegionsList(regions, s.regionIndex, s.furthestRegion, today)
     TextButton(onClick = { viewModel.setJourneyEnabled(false) }, modifier = Modifier.testTag("journey_pause")) { Text("Pause the Journey", color = TextMuted) }
+}
+
+private class Walk(val shownStep: Int, val note: String?)
+
+/** Starts the sprite where the user last saw it and walks it to today's day, so a step or a setback plays out on opening. */
+@Composable
+private fun rememberWalk(viewModel: SyncWellViewModel, s: JourneyState, region: RegionDef): Walk {
+    val last = remember { viewModel.journeyLastSeen()?.takeIf { it.first == s.regionIndex } }
+    var shown by remember { mutableIntStateOf(last?.second ?: s.stepInRegion) }
+    val note = remember { last?.let { SetbackNote.of(region.name, it.second, s.stepInRegion, region.points.firstOrNull { p -> p.checkpoint }?.number) } }
+    LaunchedEffect(s.regionIndex, s.stepInRegion) {
+        delay(500)
+        shown = s.stepInRegion
+        viewModel.markJourneySeen(s.regionIndex, s.stepInRegion)
+    }
+    return Walk(shown, note)
 }
 
 /** The region image with the character on its day. Step markers are baked into the painted images, so only the character is drawn on them. */

@@ -5,6 +5,9 @@ import org.json.JSONObject
 /** A step on the painted trail. [x] and [y] are fractions of the region image. */
 data class MapPoint(val number: Int, val x: Float, val y: Float, val checkpoint: Boolean)
 
+/** The guardian of a region's gate. The lines are calm information, never guilt. */
+data class Warden(val name: String, val personality: String, val challenge: String, val open: String, val closed: String)
+
 /** One region from `res/raw/adventure_route.json`. A null [image] means the art is not painted yet and the screen draws a placeholder. */
 data class RegionDef(
     val index: Int,
@@ -13,7 +16,8 @@ data class RegionDef(
     val points: List<MapPoint>,
     val weather: String?,
     val intro: String,
-    val releaseDate: String
+    val releaseDate: String,
+    val warden: Warden
 ) {
     val steps get() = points.size
 }
@@ -34,7 +38,10 @@ object JourneyMap {
                     MapPoint(p.getInt("number"), p.getDouble("x").toFloat(), p.getDouble("y").toFloat(), p.optBoolean("checkpoint", false))
                 }.sortedBy { it.number },
                 weather = if (o.has("weatherOverlay")) o.getString("weatherOverlay") else null,
-                intro = o.optString("intro", ""), releaseDate = o.optString("releaseDate", "1970-01-01")
+                intro = o.optString("intro", ""), releaseDate = o.optString("releaseDate", "1970-01-01"),
+                warden = o.getJSONObject("warden").let { w ->
+                    Warden(w.getString("name"), w.getString("personality"), w.getString("challenge"), w.getString("open"), w.getString("closed"))
+                }
             )
         }
     }
