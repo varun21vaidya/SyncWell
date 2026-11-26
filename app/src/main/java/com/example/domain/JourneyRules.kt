@@ -105,6 +105,10 @@ data class GoalEntry(val date: String, val amount: Double)
 data class GoalSpec(val id: String, val measure: GoalMeasure, val target: Double, val windowStart: String, val windowEnd: String, val status: GoalStatus = GoalStatus.PENDING)
 
 object GoalReview {
+    /** "2", "1,5" or "0.5" to an amount; null when empty, not a number, not above 0 or absurdly large. */
+    fun parseAmount(text: String): Double? =
+        text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 && it <= 100_000.0 }
+
     /** Entries inside the window only. Count and duration add up, percent uses the latest entry, a milestone is met by any entry that reaches the target. */
     fun progress(goal: GoalSpec, entries: List<GoalEntry>): Double {
         val inside = entries.filter { it.date >= goal.windowStart && it.date <= goal.windowEnd }

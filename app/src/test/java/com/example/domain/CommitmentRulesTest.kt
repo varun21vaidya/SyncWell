@@ -63,4 +63,20 @@ class CommitmentRulesTest {
         assertEquals("After lunch", d.planText); assertEquals("do 2", d.ifThen); assertEquals("", d.title)
         assertNull(CommitmentRules.prefillMore(null).planText)
     }
+
+    @Test fun theTimerOffersOnlyPendingLinkedGoalsWhoseWindowIncludesToday() {
+        val linked = goal("a", "Hours", "2026-11-29").copy(focusLinked = true, windowStart = "2026-11-23")
+        val done = linked.copy(id = "b", status = "MET")
+        val notLinked = linked.copy(id = "c", focusLinked = false)
+        val later = linked.copy(id = "d", windowStart = "2026-12-01", windowEnd = "2026-12-07")
+        val past = linked.copy(id = "e", windowEnd = "2026-11-24")
+        assertEquals(listOf("a"), CommitmentRules.focusChoices(listOf(linked, done, notLinked, later, past), "2026-11-26").map { it.id })
+    }
+
+    @Test fun amountsAcceptCommasAndRejectNonsense() {
+        assertEquals(1.5, GoalReview.parseAmount(" 1,5 ")!!, 0.0)
+        assertEquals(2.0, GoalReview.parseAmount("2")!!, 0.0)
+        assertNull(GoalReview.parseAmount("")); assertNull(GoalReview.parseAmount("abc")); assertNull(GoalReview.parseAmount("0"))
+        assertNull(GoalReview.parseAmount("-3")); assertNull(GoalReview.parseAmount("999999")); assertNull(GoalReview.parseAmount("NaN"))
+    }
 }

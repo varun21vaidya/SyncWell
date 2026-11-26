@@ -192,6 +192,9 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     private val _activeTodoTag = MutableStateFlow<String?>(null)
     val activeTodoTag: StateFlow<String?> = _activeTodoTag.asStateFlow()
 
+    private val _activeGoalId = MutableStateFlow<String?>(null) // the Journey goal this focus time counts toward
+    val activeGoalId: StateFlow<String?> = _activeGoalId.asStateFlow()
+
     private val _isTrackerScreenFocused = MutableStateFlow(false)
     val isTrackerScreenFocused: StateFlow<Boolean> = _isTrackerScreenFocused.asStateFlow()
 
@@ -944,6 +947,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _activeTodoTag.value = tag
     }
 
+    fun setActiveGoal(goalId: String?) {
+        _activeGoalId.value = goalId
+    }
+
     fun setTrackerScreenFocused(focused: Boolean) {
         _isTrackerScreenFocused.value = focused
         if (focused) {
@@ -988,12 +995,12 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         _accumulatedSeconds.value = 0
         stopTimerService()
         _activeContextType.value = null
-        prefs.edit().remove("focus_type").remove("focus_tag").remove("focus_base_sec").remove("focus_run_start").apply()
+        prefs.edit().remove("focus_type").remove("focus_tag").remove("focus_goal").remove("focus_base_sec").remove("focus_run_start").apply()
     }
 
     // Focus session survives the app being killed: category, tag, seconds so far, and when the current run started (null = paused)
     private fun persistFocus(type: String, baseSec: Int, runStartMs: Long?) {
-        prefs.edit().putString("focus_type", type).putString("focus_tag", _activeTodoTag.value)
+        prefs.edit().putString("focus_type", type).putString("focus_tag", _activeTodoTag.value).putString("focus_goal", _activeGoalId.value)
             .putInt("focus_base_sec", baseSec).putLong("focus_run_start", runStartMs ?: 0L).apply()
     }
 
@@ -1005,6 +1012,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val away = if (runStart > 0) ((System.currentTimeMillis() - runStart) / 1000).toInt().coerceIn(0, 360) else 0
         _activeContextType.value = type
         _activeTodoTag.value = prefs.getString("focus_tag", null)
+        _activeGoalId.value = prefs.getString("focus_goal", null)
         _accumulatedSeconds.value = prefs.getInt("focus_base_sec", 0) + away
         persistFocus(type, _accumulatedSeconds.value, null)
     }
@@ -1019,6 +1027,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         val todayIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
 
         val tagSuffix = _activeTodoTag.value?.let { "|Tag: $it" } ?: ""
+        val goalId = _activeGoalId.value
 
         viewModelScope.launch {
             val session = TrackerSession(
@@ -1029,13 +1038,15 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
                 endTime = todayIso,
                 durationMin = durationMin,
                 dateKey = todayKey,
-                isDeleted = false
+                isDeleted = false,
+                goalId = goalId
             )
             dao.insertTrackerSession(session)
             
             // Reset focus Stopwatch states
             resetTimer()
             _activeTodoTag.value = null
+            _activeGoalId.value = null
 
             // Dynamic recalculation of cached statistics
             AnalyticsComputationService.recalculateDayCache(dao, todayKey)

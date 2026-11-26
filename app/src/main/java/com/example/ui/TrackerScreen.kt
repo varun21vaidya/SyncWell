@@ -259,6 +259,8 @@ fun TrackerScreen(viewModel: SyncWellViewModel) {
                         }
                     }
 
+                    FocusGoalChips(viewModel)
+
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(

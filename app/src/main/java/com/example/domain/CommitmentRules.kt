@@ -68,6 +68,10 @@ object CommitmentRules {
         )
     }
 
+    /** Pending duration goals linked to the Focus timer whose window includes [today]: what the timer can count toward. */
+    fun focusChoices(goals: List<Goal>, today: String): List<Goal> =
+        goals.filter { it.focusLinked && it.status == "PENDING" && today >= it.windowStart && today <= it.windowEnd }
+
     /** The user's own earlier goals as editor suggestions: newest window first, one per title, at most [limit]. */
     fun suggestions(previous: List<Goal>, limit: Int = 5): List<Goal> =
         previous.sortedByDescending { it.windowEnd }.distinctBy { it.title.lowercase() }.take(limit)
