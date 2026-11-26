@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -127,4 +128,25 @@ class JourneyUseCaseTest {
         assertEquals("2026-11-27", dao.getAllGoals().single().rewardClaimedAt)
         assertEquals("Claimed: Burger", dao.getAllJourneyNotes().single().text)
     }
+
+    @Test fun theAmbitionIsOptionalCleanedAndStartsItsOwnClockOnlyWhenItChanges() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        journey.saveAmbition("  Land a backend role ", "I'm becoming someone who practises daily", "2026-11-24")
+        var s = dao.getJourneyState()!!
+        assertEquals("Land a backend role", s.ambitionText); assertEquals("2026-11-24", s.ambitionStart)
+        journey.saveAmbition("Land a backend role", "", "2026-12-01") // same ambition: the clock keeps running, the identity line is cleared
+        s = dao.getJourneyState()!!
+        assertEquals("2026-11-24", s.ambitionStart); assertNull(s.identityText)
+        journey.saveAmbition("Ship a side project", null, "2026-12-02") // a new ambition restarts the clock
+        assertEquals("2026-12-02", dao.getJourneyState()!!.ambitionStart)
+        journey.saveAmbition(null, null, "2026-12-03") // clearing both clears the clock
+        s = dao.getJourneyState()!!
+        assertNull(s.ambitionText); assertNull(s.ambitionStart)
+    }
+
+    @Test fun savingAnAmbitionBeforeTheJourneyExistsChangesNothing() = runBlocking {
+        journey.saveAmbition("x", "y", "2026-11-24")
+        assertNull(dao.getJourneyState())
+    }
 }
+

@@ -74,6 +74,14 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
     /** What is logged toward a goal inside its window: manual entries plus linked focus hours. */
     suspend fun progressOf(goal: Goal): Double = GoalReview.progress(goal.spec(), entriesOf(goal))
 
+    /** Saves the optional ambition and identity lines. A new or changed ambition starts its own clock; clearing it clears the clock. */
+    suspend fun saveAmbition(ambition: String?, identity: String?, today: String) = db.withTransaction {
+        val s = dao.getJourneyState() ?: return@withTransaction
+        val a = com.example.domain.Ambition.clean(ambition, com.example.domain.Ambition.MAX_AMBITION)
+        val start = if (a == null) null else if (a == s.ambitionText) s.ambitionStart else today
+        dao.upsertJourneyState(s.copy(ambitionText = a, identityText = com.example.domain.Ambition.clean(identity, com.example.domain.Ambition.MAX_IDENTITY), ambitionStart = start))
+    }
+
     suspend fun setCharacter(id: String) = db.withTransaction { dao.getJourneyState()?.let { dao.upsertJourneyState(it.copy(characterId = id)) } }
 
     /**

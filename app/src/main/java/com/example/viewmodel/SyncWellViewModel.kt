@@ -1706,6 +1706,10 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun crossJourneyGate(regionName: String) { viewModelScope.launch { journey.crossGate(DayBoundaryManager.currentTargetDate.value, regionName) } }
 
+    fun saveAmbition(ambition: String?, identity: String?) {
+        viewModelScope.launch { journey.saveAmbition(ambition, identity, DayBoundaryManager.currentTargetDate.value) }
+    }
+
     fun setJourneyCharacter(id: String) { viewModelScope.launch { journey.setCharacter(id) } }
 
     fun claimJourneyReward(goalId: String) { viewModelScope.launch { journey.claimReward(goalId, DayBoundaryManager.currentTargetDate.value) } }

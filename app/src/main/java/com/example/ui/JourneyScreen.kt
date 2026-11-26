@@ -97,6 +97,9 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
         if (s.stepInRegion >= region.steps) WardenCard(region, commitments, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
         CommitmentsCard(viewModel, commitments, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
     }
+    var editingWhy by remember { mutableStateOf(false) }
+    AmbitionCard(s) { editingWhy = true }
+    if (editingWhy) AmbitionDialog(s.ambitionText, s.identityText, onSave = { a, i -> viewModel.saveAmbition(a, i) }, onClose = { editingWhy = false })
     Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
     RegionsList(regions, s.regionIndex, s.furthestRegion, today)

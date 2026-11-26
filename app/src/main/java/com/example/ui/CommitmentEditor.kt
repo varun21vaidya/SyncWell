@@ -25,9 +25,12 @@ import com.example.domain.GoalMeasure
 import com.example.ui.theme.*
 import kotlinx.coroutines.launch
 
+/** The one-line research note behind the "why" fields, shared with the Journey ambition form. */
+internal const val WHY_IDENTITY = "People who tie a habit to who they want to become stick with it longer. Each good day is a vote for that person. (James Clear, Atomic Habits)"
+
 /** The one-line research notes behind the info buttons. */
 private enum class Why(val title: String, val text: String) {
-    IDENTITY("Why this matters", "People who tie a habit to who they want to become stick with it longer. Each good day is a vote for that person. (James Clear, Atomic Habits)"),
+    IDENTITY("Why this matters", WHY_IDENTITY),
     WHEN_WHERE("When and where", "A review of 94 studies found that deciding when and where you'll act makes you much more likely to follow through. (Gollwitzer and Sheeran, 2006)"),
     IF_THEN("If-then backup plan", "Planning what you'll do when the obstacle you expect shows up helps you keep going on bad days. (Oettingen, WOOP)")
 }
