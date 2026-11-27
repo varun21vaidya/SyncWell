@@ -24,21 +24,13 @@ class JourneyScreenPartsTest {
     @get:Rule val compose = createComposeRule()
     private val regions = JourneyMap.parse(File("src/main/res/raw/adventure_route.json").readText())
 
-    @Test fun startingAsksForACharacterAndStartsWithTheChosenOne() {
-        var started: String? = null
-        compose.setContent { MyApplicationTheme { JourneyStart(null, resuming = false) { started = it } } }
-        compose.onNodeWithTag("journey_char_emma").performClick()
-        compose.onNodeWithTag("journey_start").performClick()
-        compose.waitForIdle()
-        assertEquals("emma", started)
-    }
-
-    @Test fun resumingExplainsTheRestartAndKeepsTheOldCharacter() {
-        var started: String? = null
-        compose.setContent { MyApplicationTheme { JourneyStart("lee", resuming = true) { started = it } } }
+    @Test fun resumingExplainsTheRestartAndStartsWithoutQuestions() {
+        var resumed = 0
+        compose.setContent { MyApplicationTheme { JourneyResume { resumed++ } } }
+        compose.onNodeWithText("Welcome back").assertExists()
         compose.onNodeWithText("Resume the Journey").performClick()
         compose.waitForIdle()
-        assertEquals("lee", started)
+        assertEquals(1, resumed)
     }
 
     @Test fun theMapShowsTheCharacterOnAPaintedRegion() {

@@ -4,6 +4,9 @@ import com.example.data.JourneyState
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/** What the user wrote on "Before you set off". Every field is optional. */
+data class WhyDraft(val ambition: String?, val identity: String?, val targetDate: String?, val bigReward: String?)
+
 /** The optional "why" behind the Journey: an ambition ("Land a backend role") and an identity line ("I'm becoming someone who practises daily"). */
 object Ambition {
     const val MAX_AMBITION = 80

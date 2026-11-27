@@ -106,13 +106,16 @@ object JourneyMap {
 }
 
 /** The six base characters, picked at the start and changeable later. Cosmetic only. [color] is an ARGB long for the placeholder sprite. */
-data class JourneyCharacter(val id: String, val name: String, val color: Long)
+data class JourneyCharacter(val id: String, val name: String, val color: Long, val blurb: String = "")
 
 object JourneyCharacters {
     val all = listOf(
-        JourneyCharacter("max", "Max", 0xFF4FB8FF), JourneyCharacter("ivy", "Ivy", 0xFF3DDC97),
-        JourneyCharacter("lee", "Lee", 0xFFFFC857), JourneyCharacter("emma", "Emma", 0xFFFF7A85),
-        JourneyCharacter("charles", "Charles", 0xFFA78BFA), JourneyCharacter("georgia", "Georgia", 0xFFFF9F6B)
+        JourneyCharacter("max", "Max", 0xFF4FB8FF, "Steady and curious. Never rushes, never stops."),
+        JourneyCharacter("ivy", "Ivy", 0xFF3DDC97, "Quick on her feet and always up for a fresh trail."),
+        JourneyCharacter("lee", "Lee", 0xFFFFC857, "Calm under pressure and packs light."),
+        JourneyCharacter("emma", "Emma", 0xFFFF7A85, "Bright, and stubborn about small wins."),
+        JourneyCharacter("charles", "Charles", 0xFFA78BFA, "A patient planner who trusts the process."),
+        JourneyCharacter("georgia", "Georgia", 0xFFFF9F6B, "A bold early starter who sets the pace.")
     )
 
     fun byId(id: String?) = all.firstOrNull { it.id == id } ?: all.first()

@@ -61,10 +61,15 @@ fun JourneyScreen(viewModel: SyncWellViewModel, onBack: () -> Unit = {}) {
     var view by rememberSaveable { mutableStateOf(JourneyView.PAGE) }
     BackHandler(enabled = view != JourneyView.PAGE) { view = JourneyView.PAGE }
     val s = state
-    if (s == null || !s.enabled) {
-        Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    if (s == null) { // first start: Before you set off, then Choose your traveller
+        val today by DayBoundaryManager.currentTargetDate.collectAsState()
+        JourneyStartFlow(today, onFinish = { id, why -> viewModel.startJourney(id, why) }, onClose = onBack)
+        return
+    }
+    if (!s.enabled) { // paused: back where the region started, no questions
+        Column(Modifier.fillMaxSize().background(Background).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("journey_back")) { Text("← Back") }
-            JourneyStart(s?.characterId, resuming = s != null) { id -> viewModel.setJourneyEnabled(true, id) }
+            JourneyResume { viewModel.setJourneyEnabled(true, s.characterId) }
         }
         return
     }
@@ -88,22 +93,15 @@ private fun JourneySubView(view: JourneyView, viewModel: SyncWellViewModel, s: J
 }
 
 @Composable
-internal fun JourneyStart(characterId: String?, resuming: Boolean, onStart: (String) -> Unit) {
-    var picked by remember { mutableStateOf(characterId ?: JourneyCharacters.all.first().id) }
+internal fun JourneyResume(onResume: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Surface1), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(if (resuming) "Welcome back" else "Walk your routine", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
-            Text(
-                if (resuming) "You paused the Journey, so you start again at the beginning of your current region. Earlier regions, stamps and badges stay."
-                else "A character walks a painted map, one day for every day you reach 80%. Missed days can send you back to the last camp, never further than your current region. It is optional and you can pause it any time.",
-                color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp
-            )
-            Text("Choose your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            CharacterPicker(picked) { picked = it }
+            Text("Welcome back", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text("You paused the Journey, so you start again at the beginning of your current region. Earlier regions, stamps and badges stay.", color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp)
             Button(
-                onClick = { onStart(picked) }, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("journey_start"), shape = RoundedCornerShape(14.dp),
+                onClick = onResume, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("journey_start"), shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Progress, contentColor = OnProgress)
-            ) { Text(if (resuming) "Resume the Journey" else "Start the Journey", fontWeight = FontWeight.Black) }
+            ) { Text("Resume the Journey", fontWeight = FontWeight.Black) }
         }
     }
 }
@@ -130,10 +128,7 @@ private fun JourneyPage(viewModel: SyncWellViewModel, s: JourneyState, regions: 
                 WeeklyGoalsCard(viewModel, CommitmentRules.thisWeek(goals, today), onAdd = { open(JourneyView.WEEKLY) })
             }
         }
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (region == null) SummitCard()
-            LegacyJourneySettings(viewModel, s, regions, today)
-        }
+        if (region == null) Column(Modifier.padding(16.dp)) { SummitCard() }
     }
 }
 
@@ -177,25 +172,6 @@ private fun rememberMapActions(viewModel: SyncWellViewModel, s: JourneyState, re
             JourneyShareCards.share(context, JourneyShare.journey(region, s.stepInRegion, position, passport.size, JourneyCharacters.byId(s.characterId).name), "my-journey.png", "Share my Journey")
         }
     )
-}
-
-/**
- * Until Settings has a Journey group (the next step), the ambition, reminders, traveller and pause stay reachable here, below the page.
- * Removed when they move.
- */
-@Composable
-private fun LegacyJourneySettings(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, today: String) {
-    val context = LocalContext.current
-    var editingWhy by remember { mutableStateOf(false) }
-    AmbitionCard(s, today, onEdit = { editingWhy = true }, onShare = {
-        JourneyShareCards.share(context, JourneyShare.ambition(s, today, JourneyRoute.totalSteps(JourneyPosition(s.regionIndex, s.stepInRegion)), showReward = true), "my-ambition.png", "Share my ambition")
-    })
-    val reminders by viewModel.journeyReminders.collectAsState()
-    JourneyRemindersCard(reminders) { viewModel.saveJourneyReminders(it) }
-    if (editingWhy) AmbitionDialog(s, today, onSave = { a, i, d, r -> viewModel.saveAmbition(a, i, d, r) }, onClose = { editingWhy = false })
-    Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
-    TextButton(onClick = { viewModel.setJourneyEnabled(false) }, modifier = Modifier.testTag("journey_pause")) { Text("Pause the Journey", color = TextMuted) }
 }
 
 private class Walk(val shownStep: Int, val note: String?)
@@ -246,17 +222,4 @@ private fun PlaceholderTrail(region: RegionDef) {
 @Composable
 fun CharacterSprite(character: JourneyCharacter, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
     CharacterAvatar(character, size, modifier)
-}
-
-@Composable
-private fun CharacterPicker(selectedId: String, onPick: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        JourneyCharacters.all.forEach { c ->
-            val selected = c.id == selectedId
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (selected) Surface3 else Color.Transparent).clickable { onPick(c.id) }.padding(vertical = 6.dp).testTag("journey_char_${c.id}")) {
-                CharacterSprite(c, 36.dp)
-                Text(c.name, color = if (selected) Progress else TextMuted, fontSize = 10.sp, maxLines = 1)
-            }
-        }
-    }
 }

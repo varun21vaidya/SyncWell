@@ -1698,9 +1698,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun setJourneyEnabled(on: Boolean, characterId: String = "max") {
         viewModelScope.launch {
             if (on) journey.enable(DayBoundaryManager.currentTargetDate.value, characterId) else journey.disable()
-            JourneyReminderScheduler.scheduleAll(getApplication()) // the five reminders follow the Journey on or off
-            TodayWidget.refresh(getApplication()) // and so does the widget's map
+            afterJourneyToggle()
         }
+    }
+
+    /** First start from the start flow: the chosen traveller, and the optional ambition, identity, date and big reward written before setting off. */
+    fun startJourney(characterId: String, why: WhyDraft?) {
+        viewModelScope.launch {
+            val today = DayBoundaryManager.currentTargetDate.value
+            journey.enable(today, characterId)
+            if (why != null && (why.ambition != null || why.identity != null)) journey.saveAmbition(why.ambition, why.identity, today, why.targetDate, why.bigReward)
+            afterJourneyToggle()
+        }
+    }
+
+    private suspend fun afterJourneyToggle() {
+        JourneyReminderScheduler.scheduleAll(getApplication()) // the five reminders follow the Journey on or off
+        TodayWidget.refresh(getApplication()) // and so does the widget's map
     }
 
     private val _journeyReminders = MutableStateFlow(JourneyReminderScheduler.settings(application))

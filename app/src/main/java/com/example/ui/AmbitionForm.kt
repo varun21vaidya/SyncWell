@@ -62,7 +62,8 @@ fun AmbitionDialog(state: JourneyState, today: String, onSave: (String?, String?
 @Composable
 fun AmbitionForm(
     ambition: String?, identity: String?, targetDate: String?, bigReward: String?, today: String,
-    onSave: (String?, String?, String?, String?) -> Unit, onClose: () -> Unit
+    onSave: (String?, String?, String?, String?) -> Unit, onClose: () -> Unit,
+    saveLabel: String = "Save", cancelLabel: String = "Cancel", showTitle: Boolean = true
 ) {
     var a by remember { mutableStateOf(ambition.orEmpty()) }
     var i by remember { mutableStateOf(identity.orEmpty()) }
@@ -71,17 +72,17 @@ fun AmbitionForm(
     val status = Ambition.dateStatus(date, targetDate, today)
     val hasDate = status == Ambition.DateStatus.VALID || status == Ambition.DateStatus.KEPT
     Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Why you walk", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        if (showTitle) Text("Why you walk", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         OutlinedTextField(a, { a = it.take(Ambition.MAX_AMBITION) }, Modifier.fillMaxWidth().testTag("ambition_text"), label = { Text("Ambition (optional)") }, placeholder = { Text("Land a backend role") }, singleLine = true)
         OutlinedTextField(i, { i = it.take(Ambition.MAX_IDENTITY) }, Modifier.fillMaxWidth().testTag("identity_text"), label = { Text("Who you are becoming (optional)") }, placeholder = { Text("I'm becoming someone who practises daily") })
         Text(WHY_IDENTITY, color = TextMuted, fontSize = 11.sp, lineHeight = 16.sp)
         if (a.isNotBlank()) DateAndReward(date, { date = it.take(10) }, reward, { reward = it.take(Ambition.MAX_REWARD) }, status, today)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onClose) { Text("Cancel") }
+            TextButton(onClick = onClose, modifier = Modifier.testTag("ambition_cancel")) { Text(cancelLabel) }
             TextButton(onClick = {
                 onSave(Ambition.clean(a, Ambition.MAX_AMBITION), Ambition.clean(i, Ambition.MAX_IDENTITY), date.trim().takeIf { hasDate }, Ambition.clean(reward, Ambition.MAX_REWARD))
                 onClose()
-            }, enabled = status != Ambition.DateStatus.INVALID, modifier = Modifier.testTag("ambition_save")) { Text("Save") }
+            }, enabled = status != Ambition.DateStatus.INVALID, modifier = Modifier.testTag("ambition_save")) { Text(saveLabel) }
         }
     }
 }

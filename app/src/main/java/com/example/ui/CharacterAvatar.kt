@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -31,4 +32,15 @@ fun CharacterAvatar(character: JourneyCharacter, size: Dp, modifier: Modifier = 
         contentScale = ContentScale.Crop,
         modifier = modifier.size(size).clip(CircleShape)
     )
+}
+
+/** The approved full-body art. Only Max has it so far; the others have just their avatar. */
+internal val CHARACTER_FULL = mapOf("max" to R.drawable.char_max_full)
+
+/** The character large, on the choose screen: full body when there is art for it, otherwise the avatar. */
+@Composable
+fun CharacterFull(character: JourneyCharacter, height: Dp, modifier: Modifier = Modifier) {
+    val full = CHARACTER_FULL[character.id]
+    if (full == null) CharacterAvatar(character, height * 0.7f, modifier)
+    else Image(painterResource(full), contentDescription = character.name, contentScale = ContentScale.Fit, modifier = modifier.height(height))
 }
