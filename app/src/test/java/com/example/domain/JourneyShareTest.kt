@@ -42,7 +42,8 @@ class JourneyShareTest {
         val s = JourneyState(ambitionText = "Land a backend role", identityText = "I practise daily", targetDate = "2026-12-06", bigRewardText = "Gaming")
         val hidden = JourneyShare.ambition(s, "2026-11-26", 1, false)
         assertEquals(listOf("Land a backend role", "I practise daily", "10 days to go", "1 day walked on the trail"), hidden.lines)
-        assertEquals("Waiting for it: Gaming", JourneyShare.ambition(s, "2026-11-26", 1, true).lines.last())
+        assertEquals("Giving up until then: Gaming", JourneyShare.ambition(s, "2026-11-26", 1, true).lines.last())
+        assertEquals("Earned it back: Gaming", JourneyShare.ambition(s.copy(bigRewardUnlockedAt = "2026-12-06"), "2026-12-07", 1, true).lines.last())
     }
 
     @Test fun theCountdownIsWholeDaysAndSilentOncePassed() {

@@ -1683,7 +1683,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun syncJourney() {
         viewModelScope.launch {
             val today = DayBoundaryManager.currentTargetDate.value
-            try { journey.sync(today); journey.review(today); TodayWidget.refresh(getApplication()) } catch (e: Exception) { Log.e("Journey", "sync failed", e) }
+            try { journey.sync(today); journey.review(today); journey.checkBigReward(today); TodayWidget.refresh(getApplication()) } catch (e: Exception) { Log.e("Journey", "sync failed", e) }
         }
     }
 
@@ -1730,8 +1730,8 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     fun crossJourneyGate(regionName: String) { viewModelScope.launch { journey.crossGate(DayBoundaryManager.currentTargetDate.value, regionName) } }
 
-    fun saveAmbition(ambition: String?, identity: String?) {
-        viewModelScope.launch { journey.saveAmbition(ambition, identity, DayBoundaryManager.currentTargetDate.value) }
+    fun saveAmbition(ambition: String?, identity: String?, targetDate: String?, bigReward: String?) {
+        viewModelScope.launch { journey.saveAmbition(ambition, identity, DayBoundaryManager.currentTargetDate.value, targetDate, bigReward) }
     }
 
     fun setJourneyCharacter(id: String) { viewModelScope.launch { journey.setCharacter(id) } }

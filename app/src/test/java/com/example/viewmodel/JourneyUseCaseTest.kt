@@ -188,5 +188,49 @@ class JourneyUseCaseTest {
         assertEquals("REFLECTION", note.kind); assertEquals("Evenings are better", note.text); assertEquals("2026-11-27", note.date)
         assertEquals(140, run { journey.saveReflection(3, "x".repeat(500), "2026-11-28"); dao.getAllJourneyNotes().first { it.id == "camp-3" }.text.length })
     }
+
+    @Test fun aDateAndARewardAreSavedWithTheAmbitionAndDroppedWithoutOne() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        journey.saveAmbition("Land a role", null, "2026-11-24", targetDate = "2026-12-20", bigReward = " Gaming ")
+        var s = dao.getJourneyState()!!
+        assertEquals("2026-12-20", s.targetDate); assertEquals("Gaming", s.bigRewardText)
+        journey.saveAmbition("Land a role", null, "2026-11-25", targetDate = "2026-11-01", bigReward = "Gaming") // a past date is no date, so no reward
+        s = dao.getJourneyState()!!
+        assertNull(s.targetDate); assertNull(s.bigRewardText)
+        journey.saveAmbition("Land a role", null, "2026-11-26", targetDate = "2026-12-20", bigReward = "Gaming")
+        journey.saveAmbition(null, null, "2026-11-27", targetDate = "2026-12-20", bigReward = "Gaming") // no ambition: nothing is kept
+        s = dao.getJourneyState()!!
+        assertNull(s.targetDate); assertNull(s.bigRewardText); assertNull(s.ambitionStart)
+    }
+
+    @Test fun aNearTargetDateGivesTheThingBackOnThatDayOnce() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        journey.saveAmbition("Land a role", null, "2026-11-24", targetDate = "2026-12-01", bigReward = "Gaming")
+        assertFalse(journey.checkBigReward("2026-11-30"))
+        assertTrue(journey.checkBigReward("2026-12-01"))
+        assertEquals("2026-12-01", dao.getJourneyState()!!.bigRewardUnlockedAt)
+        assertFalse(journey.checkBigReward("2026-12-02")) // already given back
+        assertEquals(1, dao.getAllJourneyNotes().count { it.text == "It is yours again: Gaming" })
+    }
+
+    @Test fun aFarTargetDateWaitsForTheSummit() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        journey.saveAmbition("Land a role", null, "2026-11-24", targetDate = "2027-06-01", bigReward = "Gaming")
+        assertFalse(journey.checkBigReward("2027-07-01")) // the date passes but the Summit is not crossed
+        dao.upsertJourneyState(dao.getJourneyState()!!.copy(regionIndex = 6))
+        assertTrue(journey.checkBigReward("2027-07-02"))
+    }
+
+    @Test fun changingTheAmbitionOrTheRewardLocksItAgainButEditingTheWordsDoesNot() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        journey.saveAmbition("Land a role", null, "2026-11-24", targetDate = "2026-12-01", bigReward = "Gaming")
+        journey.checkBigReward("2026-12-01")
+        journey.saveAmbition("Land a role", "I practise", "2026-12-02", targetDate = "2026-12-01", bigReward = "Gaming") // the date has passed, the saved one stays
+        var s = dao.getJourneyState()!!
+        assertEquals("2026-12-01", s.bigRewardUnlockedAt); assertEquals("2026-12-01", s.targetDate); assertEquals("Gaming", s.bigRewardText)
+        journey.saveAmbition("Land a role", "I practise", "2026-12-02", targetDate = "2026-12-01", bigReward = "Social media")
+        s = dao.getJourneyState()!!
+        assertNull(s.bigRewardUnlockedAt) // a different thing starts locked again
+    }
 }
 

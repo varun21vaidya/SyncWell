@@ -39,7 +39,7 @@ object JourneyShare {
             s.identityText,
             countdown(s.targetDate, today)?.let { if (it == 0) "Today is the day" else "$it days to go" },
             "${plural(daysWalked, "day")} walked on the trail",
-            s.bigRewardText?.takeIf { showReward }?.let { "Waiting for it: $it" }
+            s.bigRewardText?.takeIf { showReward }?.let { if (s.bigRewardUnlockedAt != null) "Earned it back: $it" else "Giving up until then: $it" }
         )
     )
 

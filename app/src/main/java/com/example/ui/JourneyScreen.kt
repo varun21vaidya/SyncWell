@@ -126,12 +126,12 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
     }
     TextButton(onClick = onOpenLog, modifier = Modifier.testTag("journey_open_log")) { Text("Open the travel log", color = Progress) }
     var editingWhy by remember { mutableStateOf(false) }
-    AmbitionCard(s, onEdit = { editingWhy = true }, onShare = {
-        JourneyShareCards.share(context, JourneyShare.ambition(s, today, JourneyRoute.totalSteps(JourneyPosition(s.regionIndex, s.stepInRegion)), showReward = false), "my-ambition.png", "Share my ambition")
+    AmbitionCard(s, today, onEdit = { editingWhy = true }, onShare = {
+        JourneyShareCards.share(context, JourneyShare.ambition(s, today, JourneyRoute.totalSteps(JourneyPosition(s.regionIndex, s.stepInRegion)), showReward = true), "my-ambition.png", "Share my ambition")
     })
     val reminders by viewModel.journeyReminders.collectAsState()
     JourneyRemindersCard(reminders) { viewModel.saveJourneyReminders(it) }
-    if (editingWhy) AmbitionDialog(s.ambitionText, s.identityText, onSave = { a, i -> viewModel.saveAmbition(a, i) }, onClose = { editingWhy = false })
+    if (editingWhy) AmbitionDialog(s, today, onSave = { a, i, d, r -> viewModel.saveAmbition(a, i, d, r) }, onClose = { editingWhy = false })
     Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
     RegionsList(regions, s.regionIndex, s.furthestRegion, today)

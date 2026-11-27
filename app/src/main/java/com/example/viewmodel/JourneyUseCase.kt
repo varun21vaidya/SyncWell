@@ -8,6 +8,8 @@ import com.example.data.JourneyNote
 import com.example.data.JourneyState
 import com.example.data.PassportStamp
 import com.example.data.SyncWellDao
+import com.example.domain.Ambition
+import com.example.domain.BigReward
 import com.example.domain.GoalEntry
 import com.example.domain.GoalMeasure
 import com.example.domain.GoalReview
@@ -93,12 +95,32 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao, 
     /** What is logged toward a goal inside its window: manual entries plus linked focus hours. */
     suspend fun progressOf(goal: Goal): Double = GoalReview.progress(goal.spec(), entriesOf(goal))
 
-    /** Saves the optional ambition and identity lines. A new or changed ambition starts its own clock; clearing it clears the clock. */
-    suspend fun saveAmbition(ambition: String?, identity: String?, today: String) = db.withTransaction {
+    /**
+     * Saves the optional ambition, identity line, target date and the favourite thing given up until then.
+     * A new or changed ambition starts its own clock and re-locks the reward; clearing it clears the clock, the date and the reward.
+     * The reward needs a date, so it is dropped when there is none. A past or invalid date counts as no date.
+     */
+    suspend fun saveAmbition(ambition: String?, identity: String?, today: String, targetDate: String? = null, bigReward: String? = null) = db.withTransaction {
         val s = dao.getJourneyState() ?: return@withTransaction
-        val a = com.example.domain.Ambition.clean(ambition, com.example.domain.Ambition.MAX_AMBITION)
-        val start = if (a == null) null else if (a == s.ambitionText) s.ambitionStart else today
-        dao.upsertJourneyState(s.copy(ambitionText = a, identityText = com.example.domain.Ambition.clean(identity, com.example.domain.Ambition.MAX_IDENTITY), ambitionStart = start))
+        val a = Ambition.clean(ambition, Ambition.MAX_AMBITION)
+        val changed = a != s.ambitionText
+        val start = if (a == null) null else if (changed) today else s.ambitionStart
+        val date = if (a == null) null else Ambition.cleanDate(targetDate, today) ?: targetDate?.trim()?.takeIf { it == s.targetDate }
+        val reward = if (date == null) null else Ambition.clean(bigReward, Ambition.MAX_REWARD)
+        val keepUnlock = !changed && reward == s.bigRewardText
+        dao.upsertJourneyState(s.copy(
+            ambitionText = a, identityText = Ambition.clean(identity, Ambition.MAX_IDENTITY), ambitionStart = start,
+            targetDate = date, bigRewardText = reward, bigRewardUnlockedAt = if (keepUnlock) s.bigRewardUnlockedAt else null
+        ))
+    }
+
+    /** Gives the favourite thing back once its moment has come: on the target date, or at the Summit. Returns true the day it unlocks. */
+    suspend fun checkBigReward(today: String): Boolean = db.withTransaction {
+        val s = dao.getJourneyState()?.takeIf { it.enabled && it.bigRewardUnlockedAt == null } ?: return@withTransaction false
+        if (!BigReward.due(s, today, JourneyRules.summitReached(s.position()))) return@withTransaction false
+        dao.upsertJourneyState(s.copy(bigRewardUnlockedAt = today))
+        dao.insertJourneyNotes(listOf(JourneyNote("big-reward", today, "LOG", "It is yours again: ${s.bigRewardText}")))
+        true
     }
 
     suspend fun setCharacter(id: String) = db.withTransaction { dao.getJourneyState()?.let { dao.upsertJourneyState(it.copy(characterId = id)) } }
