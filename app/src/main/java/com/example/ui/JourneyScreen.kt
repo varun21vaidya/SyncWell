@@ -166,6 +166,7 @@ internal fun JourneyMapCard(region: RegionDef, step: Int, character: JourneyChar
     BoxWithConstraints(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(20.dp)).background(Surface1).testTag("journey_map")) {
         if (resId != 0) Image(painterResource(resId), contentDescription = "Map of ${region.name}", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         else PlaceholderTrail(region)
+        WeatherOverlay(JourneyMap.weatherOf(region))
         val size = 36.dp
         CharacterSprite(character, size, Modifier.offset(maxWidth * x - size / 2, maxHeight * y - size).testTag("journey_character"))
     }
