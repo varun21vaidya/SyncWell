@@ -81,7 +81,7 @@ fun HomeScreen(viewModel: SyncWellViewModel, onNavigate: (Destination) -> Unit) 
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = greetingFor(nowMinutes / 60),
+                    text = greetingFor(nowMinutes / 60, viewModel.firstName.collectAsState().value),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Black,

@@ -11,6 +11,10 @@ fun greetingFor(hour: Int): String = when (hour) {
     else -> "Hello" // 00:00 to 04:59, no judgement about being up
 }
 
+/** "Good evening, Varun", or just the greeting when no name is known. */
+fun greetingFor(hour: Int, firstName: String?): String =
+    firstName?.trim()?.takeIf { it.isNotEmpty() }?.let { "${greetingFor(hour)}, $it" } ?: greetingFor(hour)
+
 /** "Sunday 22 November" for a yyyy-MM-dd key; the key itself if it cannot be read. */
 fun dateHeader(dateKey: String): String = try {
     val d = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateKey)!!

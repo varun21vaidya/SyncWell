@@ -185,9 +185,7 @@ private fun PlaceholderTrail(region: RegionDef) {
 /** Placeholder sprite until the painted characters exist: a coloured disc with the initial. */
 @Composable
 fun CharacterSprite(character: JourneyCharacter, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
-    Box(modifier.size(size).clip(CircleShape).background(Color(character.color)), contentAlignment = Alignment.Center) {
-        Text(character.name.take(1), color = Background, fontWeight = FontWeight.Black, fontSize = (size.value * 0.5f).sp)
-    }
+    CharacterAvatar(character, size, modifier)
 }
 
 @Composable

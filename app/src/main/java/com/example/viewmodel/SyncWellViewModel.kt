@@ -721,8 +721,16 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** First name from the Google account, kept across restarts for the Home greeting; null until the first sign-in. */
+    private val _firstName = MutableStateFlow(prefs.getString("first_name", null))
+    val firstName: StateFlow<String?> = _firstName.asStateFlow()
+
     fun authorizeGoogleSignIn(name: String, email: String) {
         _user.value = name
+        if (name != email) name.trim().substringBefore(' ').takeIf { it.isNotBlank() }?.let {
+            prefs.edit().putString("first_name", it).apply()
+            _firstName.value = it
+        }
         pendingEmail = email
         viewModelScope.launch {
             val settings = dao.getAppSettingsDirectly()

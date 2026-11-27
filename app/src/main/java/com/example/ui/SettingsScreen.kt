@@ -58,6 +58,37 @@ fun SettingsScreen(viewModel: SyncWellViewModel) {
             )
         }
 
+        // Journey: opt-in, so it gets its own switch here rather than only the strip on Home
+        val journey by viewModel.journeyState.collectAsState()
+        val journeyOn = journey?.enabled == true
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceTier1),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, OledBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Journey mode", color = Slate400, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Walk a painted map", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        Text("Your character takes one step for every day you reach 80%.", color = Slate400, fontSize = 12.sp)
+                    }
+                    Switch(
+                        checked = journeyOn,
+                        onCheckedChange = { on -> if (on) viewModel.setJourneyEnabled(true, journey?.characterId ?: "max") else viewModel.setJourneyEnabled(false) },
+                        colors = SwitchDefaults.colors(checkedThumbColor = EmeraldGlow, checkedTrackColor = EmeraldDim),
+                        modifier = Modifier.testTag("journey_switch")
+                    )
+                }
+                Text(
+                    if (journeyOn) "Open it from the Journey strip on Home. Turning it off pauses it: you restart at the beginning of your current region, and stamps and badges stay."
+                    else "Off. Your routine, streaks and badges work the same either way.",
+                    color = Slate400, fontSize = 12.sp, lineHeight = 17.sp
+                )
+            }
+        }
+
         // Card: TARGET WEIGHT & FITNESS TARGETS
         val targetWeightKg by viewModel.targetWeightKg.collectAsState()
         var targetWeightText by remember(targetWeightKg) {

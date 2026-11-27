@@ -16,6 +16,13 @@ class GreetingTest {
         assertEquals("Good evening", greetingFor(23))
     }
 
+    @Test fun greetingAddsTheFirstNameWhenKnown() {
+        assertEquals("Hello, Varun", greetingFor(1, "Varun"))
+        assertEquals("Good evening, Varun", greetingFor(20, " Varun "))
+        assertEquals("Hello", greetingFor(1, null))
+        assertEquals("Good morning", greetingFor(8, ""))
+    }
+
     @Test fun everyHourHasAGreeting() {
         (0..23).forEach { assertEquals(true, greetingFor(it).isNotBlank()) }
     }
