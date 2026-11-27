@@ -1,5 +1,6 @@
 package com.example.domain
 
+import com.example.data.JourneyState
 import org.json.JSONObject
 
 /** A step on the painted trail. [x] and [y] are fractions of the region image. */
@@ -47,6 +48,24 @@ object JourneyMap {
                 }
             )
         }
+    }
+
+    /** The one-line status shared by the Home strip and the widget: where you are, a pause note, or an invitation. Never says step. */
+    fun stripText(state: JourneyState?, regions: List<RegionDef>): String = when {
+        state == null -> "Try the Journey: walk a painted map, one day at a time"
+        !state.enabled -> "Journey paused. Tap to resume"
+        else -> regions.getOrElse(state.regionIndex) { regions.last() }.let { r ->
+            listOfNotNull(r.name, dayLabel(r, state.stepInRegion), nextMilestone(r, state.stepInRegion)).joinToString(" · ")
+        }
+    }
+
+    /** A window of the region image around (x, y), as fractions of the image: [cw] wide and [ch] tall, kept fully inside the picture. */
+    fun cropAround(x: Float, y: Float, cw: Float, ch: Float): FloatArray {
+        val w = cw.coerceIn(0.05f, 1f)
+        val h = ch.coerceIn(0.05f, 1f)
+        val left = (x - w / 2).coerceIn(0f, 1f - w)
+        val top = (y - h / 2).coerceIn(0f, 1f - h)
+        return floatArrayOf(left, top, left + w, top + h)
     }
 
     fun weatherOf(region: RegionDef?): Weather = when (region?.weather) {

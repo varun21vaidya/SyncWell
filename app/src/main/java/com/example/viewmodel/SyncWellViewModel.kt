@@ -1683,7 +1683,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun syncJourney() {
         viewModelScope.launch {
             val today = DayBoundaryManager.currentTargetDate.value
-            try { journey.sync(today); journey.review(today) } catch (e: Exception) { Log.e("Journey", "sync failed", e) }
+            try { journey.sync(today); journey.review(today); TodayWidget.refresh(getApplication()) } catch (e: Exception) { Log.e("Journey", "sync failed", e) }
         }
     }
 
@@ -1691,6 +1691,7 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             if (on) journey.enable(DayBoundaryManager.currentTargetDate.value, characterId) else journey.disable()
             JourneyReminderScheduler.scheduleAll(getApplication()) // the five reminders follow the Journey on or off
+            TodayWidget.refresh(getApplication()) // and so does the widget's map
         }
     }
 

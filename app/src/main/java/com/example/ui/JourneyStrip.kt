@@ -31,16 +31,7 @@ fun JourneyStrip(viewModel: SyncWellViewModel, onClick: () -> Unit) {
     val state by viewModel.journeyState.collectAsState()
     val context = LocalContext.current
     val regions = remember { JourneyMap.parse(context.resources.openRawResource(R.raw.adventure_route).bufferedReader().use { it.readText() }) }
-    JourneyStripRow(stripText(state, regions), state?.takeIf { it.enabled }?.characterId, onClick)
-}
-
-/** The strip's words: "Ironwood Outpost · Day 9 of 14 · Camp on day 7", a pause note, or the invitation. Never uses the word step. */
-internal fun stripText(state: JourneyState?, regions: List<RegionDef>): String = when {
-    state == null -> "Try the Journey: walk a painted map, one day at a time"
-    !state.enabled -> "Journey paused. Tap to resume"
-    else -> regions.getOrElse(state.regionIndex) { regions.last() }.let { r ->
-        listOfNotNull(r.name, JourneyMap.dayLabel(r, state.stepInRegion), JourneyMap.nextMilestone(r, state.stepInRegion)).joinToString(" · ")
-    }
+    JourneyStripRow(JourneyMap.stripText(state, regions), state?.takeIf { it.enabled }?.characterId, onClick)
 }
 
 @Composable

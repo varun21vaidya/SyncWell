@@ -78,5 +78,18 @@ class JourneyMapTest {
         assertEquals(Weather.SNOW, JourneyMap.weatherOf(regions[4]))
         assertEquals(Weather.SUN, JourneyMap.weatherOf(null))
     }
+
+    @Test fun theWidgetCropStaysInsideTheImageAndFollowsTheCharacter() {
+        val mid = JourneyMap.cropAround(0.5f, 0.5f, 1f, 0.34f)
+        assertEquals(0f, mid[0], 0f); assertEquals(1f, mid[2], 0f)
+        assertEquals(0.5f, (mid[1] + mid[3]) / 2, 1e-6f)
+        val top = JourneyMap.cropAround(0.5f, 0.02f, 1f, 0.34f)
+        assertEquals(0f, top[1], 0f); assertEquals(0.34f, top[3], 1e-6f) // pushed down so it never leaves the picture
+        val bottom = JourneyMap.cropAround(0.5f, 0.99f, 1f, 0.34f)
+        assertEquals(1f, bottom[3], 1e-6f)
+        val small = JourneyMap.cropAround(0.9f, 0.5f, 0.4f, 0.4f)
+        assertEquals(0.6f, small[0], 1e-6f); assertEquals(1f, small[2], 1e-6f)
+        assertTrue(JourneyMap.cropAround(0.5f, 0.5f, 5f, 0f).let { it[2] - it[0] <= 1f && it[3] > it[1] }) // nonsense sizes are clamped
+    }
 }
 
