@@ -1736,13 +1736,23 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Per-device UI memory: reviews the user has read, and where the character stood when the Journey was last open (so the walk can animate)
-    private val _seenReviews = MutableStateFlow(prefs.getStringSet("journey_seen_reviews", emptySet())?.toSet() ?: emptySet())
+    private fun seenSet(key: String) = MutableStateFlow(prefs.getStringSet(key, emptySet())?.toSet() ?: emptySet())
+
+    private fun MutableStateFlow<Set<String>>.add(key: String, id: String) {
+        value = value + id
+        prefs.edit().putStringSet(key, value).apply()
+    }
+
+    private val _seenReviews = seenSet("journey_seen_reviews")
     val journeySeenReviews: StateFlow<Set<String>> = _seenReviews.asStateFlow()
 
-    fun markReviewSeen(goalId: String) {
-        _seenReviews.value = _seenReviews.value + goalId
-        prefs.edit().putStringSet("journey_seen_reviews", _seenReviews.value).apply()
-    }
+    fun markReviewSeen(goalId: String) = _seenReviews.add("journey_seen_reviews", goalId)
+
+    /** Moments (a ticket, the camp, gate day, the Summit) that have already taken over the screen once. */
+    private val _seenMoments = seenSet("journey_seen_moments")
+    val journeySeenMoments: StateFlow<Set<String>> = _seenMoments.asStateFlow()
+
+    fun markMomentSeen(key: String) = _seenMoments.add("journey_seen_moments", key)
 
     /** (region, day) from the last time the Journey was open, or null. */
     fun journeyLastSeen(): Pair<Int, Int>? =

@@ -24,25 +24,6 @@ private fun StoryCard(tag: String, content: @Composable ColumnScope.() -> Unit) 
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface1).padding(16.dp).testTag(tag), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
 }
 
-/** The oldest decided commitment the user has not read yet, one at a time: pass or fail and what changed. */
-@Composable
-fun ReviewCard(viewModel: SyncWellViewModel, goals: List<Goal>, seen: Set<String>) {
-    val next = remember(goals, seen) { ReviewQueue.unseen(goals, seen).firstOrNull() } ?: return
-    val logged by produceState(0.0, next) { value = viewModel.goalProgress(next) }
-    StoryCard("journey_review") {
-        Text(if (next.status == "MET") "Commitment met" else "Commitment not met", color = if (next.status == "MET") Progress else Streak, fontWeight = FontWeight.Black, fontSize = 16.sp)
-        Text(next.title, color = TextPrimary, fontWeight = FontWeight.Bold)
-        Text(ReviewQueue.describe(next, logged), color = TextSecondary, fontSize = 13.sp)
-        TextButton(onClick = { viewModel.markReviewSeen(next.id) }, modifier = Modifier.testTag("journey_review_ok")) { Text("Got it") }
-    }
-}
-
-/** Why the character moved back, in calm words. */
-@Composable
-fun SetbackBanner(text: String) {
-    StoryCard("journey_setback") { Text(text, color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp) }
-}
-
 /** On gate day the region's Warden presents the commitments as the challenge; each lights up when met, then the gate opens. */
 @Composable
 fun WardenCard(region: RegionDef, commitments: List<Goal>, ambition: String?, identity: String?, onCross: () -> Unit) {

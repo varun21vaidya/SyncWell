@@ -40,6 +40,7 @@ import com.example.domain.JourneyRail
 import com.example.domain.JourneyPosition
 import com.example.domain.JourneyRoute
 import com.example.domain.JourneyShare
+import com.example.domain.MomentQueue
 import com.example.domain.RegionDef
 import com.example.domain.SetbackNote
 import com.example.domain.TravelLog
@@ -111,16 +112,26 @@ internal fun JourneyResume(onResume: () -> Unit) {
 private fun JourneyPage(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onBack: () -> Unit, open: (JourneyView) -> Unit) {
     val today by DayBoundaryManager.currentTargetDate.collectAsState()
     val region = regions.getOrNull(s.regionIndex) // null once the Summit gate is crossed and no later region is bundled yet
+    val walk = region?.let { rememberWalk(viewModel, s, it) }
+    val seenReviews by viewModel.journeySeenReviews.collectAsState()
+    val seenMoments by viewModel.journeySeenMoments.collectAsState()
+    var setback by remember(walk?.note) { mutableStateOf(walk?.note) } // the walk-back note shows once, then the page
+    val moment = MomentQueue.next(s, region, goals, seenReviews, seenMoments, setback)
+    if (moment != null) { // a letter, the walk back, a ticket, the camp, gate day or the Summit takes over the screen once
+        JourneyMomentHost(moment, viewModel, s, region, regions, goals) { setback = null }
+        return
+    }
     Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).testTag("journey_screen")) {
-        if (region == null) {
+        if (region == null || walk == null) {
             TextButton(onClick = onBack, modifier = Modifier.testTag("journey_back")) { Text("← Back") }
         } else {
-            val walk = rememberWalk(viewModel, s, region)
             val actions = rememberMapActions(viewModel, s, region, regions, onBack, open)
             JourneyMapHeader(region, walk.shownStep, JourneyCharacters.byId(s.characterId), actions)
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 DayRailBlock(region, s.stepInRegion)
-                JourneyMoments(viewModel, s, region, goals, walk.note)
+                if (s.stepInRegion >= region.steps) { // after gate day's screen, the way through stays on the page until it is crossed
+                    WardenCard(region, goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
+                }
                 val items by viewModel.activeRoutineItems.collectAsState()
                 JourneyTodayCard(region, s.stepInRegion, items.count { it.isDone }, items.size)
                 val commitments = goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }
@@ -141,22 +152,6 @@ private fun DayRailBlock(region: RegionDef, step: Int) {
             Text(JourneyRail.gateText(region, step), color = TextSecondary, fontSize = 13.sp, modifier = Modifier.testTag("journey_gate_text"))
         }
         JourneyDayRail(JourneyRail.pips(region, step), JourneyRail.labels(region))
-    }
-}
-
-/** The one-off moments that stack on the page for now: the walk-back note, the review letter, gate day and the camp line. */
-@Composable
-private fun JourneyMoments(viewModel: SyncWellViewModel, s: JourneyState, region: RegionDef, goals: List<Goal>, setback: String?) {
-    val seen by viewModel.journeySeenReviews.collectAsState()
-    val notes by viewModel.journeyNotes.collectAsState()
-    setback?.let { SetbackBanner(it) }
-    ReviewCard(viewModel, goals, seen)
-    if (s.stepInRegion >= region.steps) {
-        WardenCard(region, goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
-    }
-    val camp = TravelLog.campDay(region)
-    if (camp != null && s.stepInRegion >= camp) {
-        CampReflectionCard(region.name, notes.firstOrNull { it.id == "camp-${s.regionIndex}" }) { viewModel.saveCampReflection(s.regionIndex, it) }
     }
 }
 
