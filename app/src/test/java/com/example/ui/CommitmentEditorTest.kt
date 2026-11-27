@@ -29,7 +29,7 @@ class CommitmentEditorTest {
         MyApplicationTheme {
             CommitmentEditor(region = 2, previous = emptyList(), onSave = { d ->
                 CommitmentRules.validate(d, 2, 0).also { if (it.isEmpty()) saved = d }
-            }, onClose = { closed = true })
+            }, onClose = { closed = true }, weekly = false)
         }
     }
 

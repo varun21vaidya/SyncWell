@@ -37,8 +37,21 @@ object JourneyRail {
         val left = daysToGate(region, step)
         val head = when (left) { 0 -> "You are at the gate."; 1 -> "1 day to the gate."; else -> "$left days to the gate." }
         val waiting = commitments.firstOrNull { it.status == "PENDING" && it.rewardText != null } ?: return head
-        return "$head ${waiting.rewardText} unlocks with ${waiting.title} ${trim(waiting.target)}."
+        return "$head ${waiting.rewardText} unlocks with ${waiting.title} ${formatAmount(waiting.target)}."
     }
 
-    private fun trim(d: Double) = if (d % 1.0 == 0.0) d.toLong().toString() else "%.1f".format(java.util.Locale.US, d)
+    /** The line under "Today counts as day N": what is left to reach 80%, or that the day already counts. */
+    fun todayLine(done: Int, total: Int): String = when {
+        total == 0 -> "Nothing is scheduled today."
+        DayCompletion.of(done, total).qualifies -> "Today counts. Keep going if you like."
+        else -> DayCompletion.itemsToQualify(done, total).let { "$it routine ${if (it == 1) "item" else "items"} left. 80% counts the day." }
+    }
+
+    /** What the Warden says on the commitments card: how many pledges they will check, and when. */
+    fun wardenLine(commitments: Int, gateDay: Int): String = when (commitments) {
+        0 -> "Waits at the gate on day $gateDay"
+        1 -> "Checks it at the gate on day $gateDay"
+        2 -> "Checks both at the gate on day $gateDay"
+        else -> "Checks all $commitments at the gate on day $gateDay"
+    }
 }

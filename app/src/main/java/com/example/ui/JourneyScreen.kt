@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,12 +34,13 @@ import com.example.data.Goal
 import com.example.data.JourneyState
 import com.example.domain.JourneyCharacter
 import com.example.domain.JourneyCharacters
+import com.example.domain.CommitmentRules
 import com.example.domain.JourneyMap
+import com.example.domain.JourneyRail
 import com.example.domain.JourneyPosition
 import com.example.domain.JourneyRoute
 import com.example.domain.JourneyShare
 import com.example.domain.RegionDef
-import com.example.domain.RegionView
 import com.example.domain.SetbackNote
 import com.example.domain.TravelLog
 import kotlinx.coroutines.delay
@@ -46,31 +48,43 @@ import com.example.service.DayBoundaryManager
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 
-/** The Journey: opt-in start, then the map with the character, this region's commitments and the regions list. */
+/** The places the Journey can show: the page itself, the screens behind the map icons, and the two editors. */
+private enum class JourneyView { PAGE, PASSPORT, LOG, REGIONS, COMMITMENT, WEEKLY }
+
+/** The Journey: opt-in start, then the page (map, day rail, today, gate challenge, weekly goals) with its icons and editors. */
 @Composable
-fun JourneyScreen(viewModel: SyncWellViewModel) {
+fun JourneyScreen(viewModel: SyncWellViewModel, onBack: () -> Unit = {}) {
     val state by viewModel.journeyState.collectAsState()
     val goals by viewModel.journeyGoals.collectAsState()
     val context = LocalContext.current
     val regions = remember { JourneyMap.parse(context.resources.openRawResource(R.raw.adventure_route).bufferedReader().use { it.readText() }) }
-    var editing by remember { mutableStateOf(false) }
-    var showLog by remember { mutableStateOf(false) }
+    var view by rememberSaveable { mutableStateOf(JourneyView.PAGE) }
+    BackHandler(enabled = view != JourneyView.PAGE) { view = JourneyView.PAGE }
     val s = state
-    if (showLog) {
-        val notes by viewModel.journeyNotes.collectAsState()
-        BackHandler { showLog = false }
-        TravelLogScreen(notes) { showLog = false }
+    if (s == null || !s.enabled) {
+        Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TextButton(onClick = onBack, modifier = Modifier.testTag("journey_back")) { Text("← Back") }
+            JourneyStart(s?.characterId, resuming = s != null) { id -> viewModel.setJourneyEnabled(true, id) }
+        }
         return
     }
+    if (JourneySubView(view, viewModel, s, regions, goals) { view = JourneyView.PAGE }) return
+    JourneyPage(viewModel, s, regions, goals, onBack, open = { view = it })
+}
 
-    if (editing && s != null) {
-        CommitmentEditor(s.regionIndex, goals.filter { it.kind == "COMMITMENT" }, onSave = { viewModel.saveCommitment(it) }, onClose = { editing = false })
-        return
+/** Draws the screen behind a map icon or an editor when one is open. Returns false for the page itself. */
+@Composable
+private fun JourneySubView(view: JourneyView, viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, close: () -> Unit): Boolean {
+    val today by DayBoundaryManager.currentTargetDate.collectAsState()
+    when (view) {
+        JourneyView.PAGE -> return false
+        JourneyView.PASSPORT -> PassportScreen(viewModel.journeyPassport.collectAsState().value, regions, close)
+        JourneyView.LOG -> TravelLogScreen(viewModel.journeyNotes.collectAsState().value, close)
+        JourneyView.REGIONS -> RegionsScreen(regions, s.regionIndex, s.furthestRegion, today, close)
+        JourneyView.COMMITMENT -> CommitmentEditor(s.regionIndex, goals.filter { it.kind == "COMMITMENT" }, onSave = { viewModel.saveCommitment(it) }, onClose = close)
+        JourneyView.WEEKLY -> CommitmentEditor(s.regionIndex, goals.filter { it.kind == "WEEKLY" }, onSave = { viewModel.saveWeeklyGoal(it) }, onClose = close, weekly = true)
     }
-    Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (s == null || !s.enabled) JourneyStart(s?.characterId, resuming = s != null) { id -> viewModel.setJourneyEnabled(true, id) }
-        else JourneyTrail(viewModel, s, regions, goals, onAddCommitment = { editing = true }, onOpenLog = { showLog = true })
-    }
+    return true
 }
 
 @Composable
@@ -94,37 +108,84 @@ internal fun JourneyStart(characterId: String?, resuming: Boolean, onStart: (Str
     }
 }
 
+/** The page: map with icons, then (padded) the day rail, today, the stacked moments, the gate challenge and the weekly goals. */
 @Composable
-private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onAddCommitment: () -> Unit, onOpenLog: () -> Unit) {
+private fun JourneyPage(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onBack: () -> Unit, open: (JourneyView) -> Unit) {
     val today by DayBoundaryManager.currentTargetDate.collectAsState()
-    val seen by viewModel.journeySeenReviews.collectAsState()
     val region = regions.getOrNull(s.regionIndex) // null once the Summit gate is crossed and no later region is bundled yet
-    if (region == null) SummitCard() else {
-        val commitments = goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }
-        val walk = rememberWalk(viewModel, s, region)
-        JourneyHeader(region, s.stepInRegion)
-        walk.note?.let { SetbackBanner(it) }
-        ReviewCard(viewModel, goals, seen)
-        JourneyMapCard(region, walk.shownStep, JourneyCharacters.byId(s.characterId))
-        if (s.stepInRegion >= region.steps) WardenCard(region, commitments, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
-        CommitmentsCard(viewModel, commitments, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
-        val camp = TravelLog.campDay(region)
-        if (camp != null && s.stepInRegion >= camp) {
-            val notes by viewModel.journeyNotes.collectAsState()
-            CampReflectionCard(region.name, notes.firstOrNull { it.id == "camp-${s.regionIndex}" }) { viewModel.saveCampReflection(s.regionIndex, it) }
+    Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).testTag("journey_screen")) {
+        if (region == null) {
+            TextButton(onClick = onBack, modifier = Modifier.testTag("journey_back")) { Text("← Back") }
+        } else {
+            val walk = rememberWalk(viewModel, s, region)
+            val actions = rememberMapActions(viewModel, s, region, regions, onBack, open)
+            JourneyMapHeader(region, walk.shownStep, JourneyCharacters.byId(s.characterId), actions)
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                DayRailBlock(region, s.stepInRegion)
+                JourneyMoments(viewModel, s, region, goals, walk.note)
+                val items by viewModel.activeRoutineItems.collectAsState()
+                JourneyTodayCard(region, s.stepInRegion, items.count { it.isDone }, items.size)
+                val commitments = goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }
+                CommitmentsCard(viewModel, commitments, region, canAdd = s.regionIndex > 0, onAdd = { open(JourneyView.COMMITMENT) })
+                WeeklyGoalsCard(viewModel, CommitmentRules.thisWeek(goals, today), onAdd = { open(JourneyView.WEEKLY) })
+            }
+        }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (region == null) SummitCard()
+            LegacyJourneySettings(viewModel, s, regions, today)
         }
     }
-    val passport by viewModel.journeyPassport.collectAsState()
-    PassportCard(passport, regions)
-    val context = LocalContext.current
-    val shareRegion = regions.getOrNull(s.regionIndex)
-    if (shareRegion != null) {
-        TextButton(onClick = {
-            val position = JourneyPosition(s.regionIndex, s.stepInRegion)
-            JourneyShareCards.share(context, JourneyShare.journey(shareRegion, s.stepInRegion, position, passport.size, JourneyCharacters.byId(s.characterId).name), "my-journey.png", "Share my Journey")
-        }, modifier = Modifier.testTag("journey_share")) { Text("Share my Journey", color = Progress) }
+}
+
+/** "Day 9 of 14" and "Gate in 5 days" over the pip rail. */
+@Composable
+private fun DayRailBlock(region: RegionDef, step: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row {
+            Text(JourneyMap.dayLabel(region, step), color = TextPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).testTag("journey_day"))
+            Text(JourneyRail.gateText(region, step), color = TextSecondary, fontSize = 13.sp, modifier = Modifier.testTag("journey_gate_text"))
+        }
+        JourneyDayRail(JourneyRail.pips(region, step), JourneyRail.labels(region))
     }
-    TextButton(onClick = onOpenLog, modifier = Modifier.testTag("journey_open_log")) { Text("Open the travel log", color = Progress) }
+}
+
+/** The one-off moments that stack on the page for now: the walk-back note, the review letter, gate day and the camp line. */
+@Composable
+private fun JourneyMoments(viewModel: SyncWellViewModel, s: JourneyState, region: RegionDef, goals: List<Goal>, setback: String?) {
+    val seen by viewModel.journeySeenReviews.collectAsState()
+    val notes by viewModel.journeyNotes.collectAsState()
+    setback?.let { SetbackBanner(it) }
+    ReviewCard(viewModel, goals, seen)
+    if (s.stepInRegion >= region.steps) {
+        WardenCard(region, goals.filter { it.kind == "COMMITMENT" && it.regionIndex == s.regionIndex }, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
+    }
+    val camp = TravelLog.campDay(region)
+    if (camp != null && s.stepInRegion >= camp) {
+        CampReflectionCard(region.name, notes.firstOrNull { it.id == "camp-${s.regionIndex}" }) { viewModel.saveCampReflection(s.regionIndex, it) }
+    }
+}
+
+/** The four map icons: Passport, Travel log and Regions open their screens, Share opens the share sheet with the Journey card. */
+@Composable
+private fun rememberMapActions(viewModel: SyncWellViewModel, s: JourneyState, region: RegionDef, regions: List<RegionDef>, onBack: () -> Unit, open: (JourneyView) -> Unit): MapActions {
+    val context = LocalContext.current
+    val passport by viewModel.journeyPassport.collectAsState()
+    return MapActions(
+        onBack = onBack, onPassport = { open(JourneyView.PASSPORT) }, onLog = { open(JourneyView.LOG) }, onRegions = { open(JourneyView.REGIONS) },
+        onShare = {
+            val position = JourneyPosition(s.regionIndex, s.stepInRegion)
+            JourneyShareCards.share(context, JourneyShare.journey(region, s.stepInRegion, position, passport.size, JourneyCharacters.byId(s.characterId).name), "my-journey.png", "Share my Journey")
+        }
+    )
+}
+
+/**
+ * Until Settings has a Journey group (the next step), the ambition, reminders, traveller and pause stay reachable here, below the page.
+ * Removed when they move.
+ */
+@Composable
+private fun LegacyJourneySettings(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, today: String) {
+    val context = LocalContext.current
     var editingWhy by remember { mutableStateOf(false) }
     AmbitionCard(s, today, onEdit = { editingWhy = true }, onShare = {
         JourneyShareCards.share(context, JourneyShare.ambition(s, today, JourneyRoute.totalSteps(JourneyPosition(s.regionIndex, s.stepInRegion)), showReward = true), "my-ambition.png", "Share my ambition")
@@ -134,7 +195,6 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
     if (editingWhy) AmbitionDialog(s, today, onSave = { a, i, d, r -> viewModel.saveAmbition(a, i, d, r) }, onClose = { editingWhy = false })
     Text("Your character", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     CharacterPicker(s.characterId) { viewModel.setJourneyCharacter(it) }
-    RegionsList(regions, s.regionIndex, s.furthestRegion, today)
     TextButton(onClick = { viewModel.setJourneyEnabled(false) }, modifier = Modifier.testTag("journey_pause")) { Text("Pause the Journey", color = TextMuted) }
 }
 
@@ -163,7 +223,7 @@ internal fun JourneyMapCard(region: RegionDef, step: Int, character: JourneyChar
     val x by animateFloatAsState(tx, if (reduced) snap() else tween(700), label = "journey_x")
     val y by animateFloatAsState(ty, if (reduced) snap() else tween(700), label = "journey_y")
     val resId = remember(region.image) { region.image?.let { context.resources.getIdentifier(it, "drawable", context.packageName) } ?: 0 }
-    BoxWithConstraints(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(20.dp)).background(Surface1).testTag("journey_map")) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(360.dp).background(Surface1).testTag("journey_map")) {
         if (resId != 0) Image(painterResource(resId), contentDescription = "Map of ${region.name}", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         else PlaceholderTrail(region)
         WeatherOverlay(JourneyMap.weatherOf(region))
@@ -196,20 +256,6 @@ private fun CharacterPicker(selectedId: String, onPick: (String) -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (selected) Surface3 else Color.Transparent).clickable { onPick(c.id) }.padding(vertical = 6.dp).testTag("journey_char_${c.id}")) {
                 CharacterSprite(c, 36.dp)
                 Text(c.name, color = if (selected) Progress else TextMuted, fontSize = 10.sp, maxLines = 1)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RegionsList(regions: List<RegionDef>, current: Int, furthest: Int, today: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Regions", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        regions.forEach { r ->
-            val view = JourneyMap.view(r, current, furthest, today)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Surface1).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(r.name, color = if (view == RegionView.LOCKED) TextMuted else TextPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(when (view) { RegionView.CURRENT -> "You are here"; RegionView.DONE -> "Crossed"; RegionView.LOCKED -> "Ahead" }, color = if (view == RegionView.CURRENT) Progress else TextMuted, fontSize = 12.sp)
             }
         }
     }

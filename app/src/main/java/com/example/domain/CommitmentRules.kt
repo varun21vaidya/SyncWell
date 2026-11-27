@@ -3,6 +3,9 @@ package com.example.domain
 import com.example.data.Goal
 
 /** Where in a region a commitment's window sits. A 7-day region only has [WHOLE]. */
+/** "10" for a whole amount, "1.5" otherwise: how a goal's progress and target are written everywhere. */
+fun formatAmount(d: Double): String = if (d % 1.0 == 0.0) d.toLong().toString() else "%.1f".format(java.util.Locale.US, d)
+
 enum class CommitmentWindow(val label: String) { SEGMENT_1("Days 1 to 7"), SEGMENT_2("Days 8 to 14"), WHOLE("Whole region") }
 
 enum class DraftError { TITLE, TARGET, TOO_MANY, WINDOW, TIME, TOO_LONG }
@@ -57,6 +60,22 @@ object CommitmentRules {
 
     private fun tooLong(d: CommitmentDraft) =
         d.title.length > MAX_TITLE || listOf(d.reward, d.planText).any { (it?.length ?: 0) > MAX_SHORT } || (d.ifThen?.length ?: 0) > MAX_IF_THEN
+
+    /** A weekly goal has no region, window choice, reward or Warden: it covers this calendar week, Monday to Sunday. Core fields must still be valid. */
+    fun validateWeekly(d: CommitmentDraft): List<DraftError> = validate(d.copy(window = CommitmentWindow.WHOLE), 0, 0)
+
+    fun toWeekly(d: CommitmentDraft, id: String, today: String): Goal {
+        val monday = WeekKey.of(today)
+        return Goal(
+            id = id, title = d.title.trim(), kind = "WEEKLY", mandatory = false, measure = d.measure.name, target = d.target,
+            targetLabel = d.targetLabel?.trim()?.ifEmpty { null }, focusLinked = d.focusLinked && d.measure == GoalMeasure.DURATION,
+            windowStart = monday, windowEnd = WeekKey.addDays(monday, 6)
+        )
+    }
+
+    /** The weekly goals of the week that contains [today], oldest window first. */
+    fun thisWeek(goals: List<Goal>, today: String): List<Goal> =
+        goals.filter { it.kind == "WEEKLY" && it.windowStart <= today && it.windowEnd >= today }.sortedBy { it.title.lowercase() }
 
     fun toGoal(d: CommitmentDraft, id: String, region: Int, regionStart: String): Goal {
         val (start, end) = dates(region, d.window, regionStart)

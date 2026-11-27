@@ -22,6 +22,7 @@ import com.example.domain.CommitmentRules
 import com.example.domain.CommitmentWindow
 import com.example.domain.DraftError
 import com.example.domain.GoalMeasure
+import com.example.domain.formatAmount
 import com.example.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -47,15 +48,17 @@ private fun DraftError.message() = when (this) {
 }
 
 /**
- * Sets one commitment: core fields up front, the rest under More. Presentation only: [onSave] validates and saves, and
- * returns what blocks it (empty once saved). A commitment is locked once set, so the screen says so before saving.
+ * Sets one commitment, or with [weekly] one weekly goal: core fields up front, the rest under More (commitments only).
+ * A weekly goal covers this calendar week and has no window, reward or Warden. Presentation only: [onSave] validates and saves,
+ * and returns what blocks it (empty once saved). A commitment is locked once set, so the screen says so before saving.
  */
 @Composable
 fun CommitmentEditor(
     region: Int,
     previous: List<Goal>,
     onSave: suspend (CommitmentDraft) -> List<DraftError>,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    weekly: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val suggestions = remember(previous) { CommitmentRules.suggestions(previous) }
@@ -67,19 +70,9 @@ fun CommitmentEditor(
     var why by remember { mutableStateOf<Why?>(null) }
 
     Column(Modifier.fillMaxSize().background(Background).padding(16.dp).testTag("commitment_editor")) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onClose, enabled = !saving) { Text("← Close") }
-            Text("Set a commitment", fontSize = 20.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-        }
+        EditorTitle(weekly, enabled = !saving, onClose = onClose)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (suggestions.isNotEmpty()) {
-                Text("Your earlier goals", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    suggestions.forEach { g ->
-                        AssistChip(onClick = { draft = CommitmentRules.fromGoal(g, region); targetText = trimmed(g.target) }, label = { Text(g.title, maxLines = 1) })
-                    }
-                }
-            }
+            Suggestions(suggestions) { g -> draft = CommitmentRules.fromGoal(g, region); targetText = formatAmount(g.target) }
             OutlinedTextField(draft.title, { draft = draft.copy(title = it) }, Modifier.fillMaxWidth().testTag("commitment_title"), label = { Text("Goal") }, singleLine = true)
             Text("Measure", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,50 +82,90 @@ fun CommitmentEditor(
                 targetText, { targetText = it; draft = draft.copy(target = it.replace(',', '.').toDoubleOrNull() ?: 0.0) },
                 Modifier.fillMaxWidth().testTag("commitment_target"), label = { Text(if (draft.measure == GoalMeasure.PERCENT) "Target (%)" else "Target") }, singleLine = true
             )
-            Text("Window", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CommitmentRules.windows(region).forEach { w -> FilterChip(selected = draft.window == w, onClick = { draft = draft.copy(window = w) }, label = { Text(w.label) }) }
-            }
-            if (draft.measure == GoalMeasure.DURATION) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(draft.focusLinked, { draft = draft.copy(focusLinked = it) })
-                    Text("  Count Focus timer hours automatically", color = TextSecondary, fontSize = 13.sp)
-                }
-            }
-
-            TextButton(onClick = { more = !more }, modifier = Modifier.testTag("commitment_more")) { Text(if (more) "Less" else "More: reward, when and where, backup plan") }
-            if (more) {
-                OutlinedTextField(draft.reward.orEmpty(), { draft = draft.copy(reward = it) }, Modifier.fillMaxWidth(), label = { Text("Reward when met (optional)") }, singleLine = true)
-                OutlinedTextField(
-                    draft.planText.orEmpty(), { draft = draft.copy(planText = it) }, Modifier.fillMaxWidth(),
-                    label = { Text("When and where") }, singleLine = true, trailingIcon = { InfoButton { why = Why.WHEN_WHERE } }
-                )
-                OutlinedTextField(
-                    draft.planTime.orEmpty(), { draft = draft.copy(planTime = it.ifBlank { null }) }, Modifier.fillMaxWidth(),
-                    label = { Text("Time, HH:MM (shows in Up next)") }, singleLine = true
-                )
-                OutlinedTextField(
-                    draft.ifThen.orEmpty(), { draft = draft.copy(ifThen = it) }, Modifier.fillMaxWidth(),
-                    label = { Text("If I can't, then I will…") }, trailingIcon = { InfoButton { why = Why.IF_THEN } }
-                )
-            }
+            if (!weekly) WindowChips(region, draft) { draft = it }
+            if (draft.measure == GoalMeasure.DURATION) FocusLink(draft.focusLinked) { draft = draft.copy(focusLinked = it) }
+            if (!weekly) MoreFields(draft, more, onToggle = { more = !more }, onChange = { draft = it }, onWhy = { why = it })
             errors.forEach { Text(it.message(), color = Danger, fontSize = 12.sp) }
-            Text("Once set, a commitment is locked. A missed one sends you back to the start of the region.", color = TextMuted, fontSize = 12.sp)
+            EditorNote(weekly)
         }
-        Button(
-            onClick = { saving = true; scope.launch { errors = onSave(draft); saving = false; if (errors.isEmpty()) onClose() } },
-            enabled = !saving, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("commitment_save"), shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Progress, contentColor = OnProgress)
-        ) { Text("Set commitment", fontWeight = FontWeight.Black) }
+        SaveButton(weekly, enabled = !saving) { saving = true; scope.launch { errors = onSave(draft); saving = false; if (errors.isEmpty()) onClose() } }
     }
+    WhyDialog(why) { why = null }
+}
 
-    why?.let { w ->
-        AlertDialog(onDismissRequest = { why = null }, title = { Text(w.title) }, text = { Text(w.text) }, confirmButton = { TextButton(onClick = { why = null }) { Text("OK") } })
+@Composable
+private fun EditorTitle(weekly: Boolean, enabled: Boolean, onClose: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onClose, enabled = enabled) { Text("← Close") }
+        Text(if (weekly) "Set a weekly goal" else "Set a commitment", fontSize = 20.sp, fontWeight = FontWeight.Black, color = TextPrimary)
     }
+}
+
+@Composable
+private fun EditorNote(weekly: Boolean) = Text(
+    if (weekly) "Counts in your weekly goals. A week you miss costs nothing."
+    else "Once set, a commitment is locked. A missed one sends you back to the start of the region.",
+    color = TextMuted, fontSize = 12.sp
+)
+
+@Composable
+private fun SaveButton(weekly: Boolean, enabled: Boolean, onClick: () -> Unit) = Button(
+    onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().height(52.dp).testTag("commitment_save"), shape = RoundedCornerShape(14.dp),
+    colors = ButtonDefaults.buttonColors(containerColor = Progress, contentColor = OnProgress)
+) { Text(if (weekly) "Add weekly goal" else "Set commitment", fontWeight = FontWeight.Black) }
+
+@Composable
+private fun WhyDialog(why: Why?, onClose: () -> Unit) {
+    if (why == null) return
+    AlertDialog(onDismissRequest = onClose, title = { Text(why.title) }, text = { Text(why.text) }, confirmButton = { TextButton(onClick = onClose) { Text("OK") } })
+}
+
+/** The user's own earlier goals as chips; picking one fills the editor. */
+@Composable
+private fun Suggestions(suggestions: List<Goal>, onPick: (Goal) -> Unit) {
+    if (suggestions.isEmpty()) return
+    Text("Your earlier goals", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        suggestions.forEach { g -> AssistChip(onClick = { onPick(g) }, label = { Text(g.title, maxLines = 1) }) }
+    }
+}
+
+@Composable
+private fun WindowChips(region: Int, draft: CommitmentDraft, onChange: (CommitmentDraft) -> Unit) {
+    Text("Window", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CommitmentRules.windows(region).forEach { w -> FilterChip(selected = draft.window == w, onClick = { onChange(draft.copy(window = w)) }, label = { Text(w.label) }) }
+    }
+}
+
+@Composable
+private fun FocusLink(linked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Switch(linked, onChange)
+        Text("  Count Focus timer hours automatically", color = TextSecondary, fontSize = 13.sp)
+    }
+}
+
+/** Reward, when-and-where plan with time, and the if-then backup plan, behind one toggle. */
+@Composable
+private fun MoreFields(draft: CommitmentDraft, open: Boolean, onToggle: () -> Unit, onChange: (CommitmentDraft) -> Unit, onWhy: (Why) -> Unit) {
+    TextButton(onClick = onToggle, modifier = Modifier.testTag("commitment_more")) { Text(if (open) "Less" else "More: reward, when and where, backup plan") }
+    if (!open) return
+    OutlinedTextField(draft.reward.orEmpty(), { onChange(draft.copy(reward = it)) }, Modifier.fillMaxWidth(), label = { Text("Reward when met (optional)") }, singleLine = true)
+    OutlinedTextField(
+        draft.planText.orEmpty(), { onChange(draft.copy(planText = it)) }, Modifier.fillMaxWidth(),
+        label = { Text("When and where") }, singleLine = true, trailingIcon = { InfoButton { onWhy(Why.WHEN_WHERE) } }
+    )
+    OutlinedTextField(
+        draft.planTime.orEmpty(), { onChange(draft.copy(planTime = it.ifBlank { null })) }, Modifier.fillMaxWidth(),
+        label = { Text("Time, HH:MM (shows in Up next)") }, singleLine = true
+    )
+    OutlinedTextField(
+        draft.ifThen.orEmpty(), { onChange(draft.copy(ifThen = it)) }, Modifier.fillMaxWidth(),
+        label = { Text("If I can't, then I will…") }, trailingIcon = { InfoButton { onWhy(Why.IF_THEN) } }
+    )
 }
 
 @Composable
 private fun InfoButton(onClick: () -> Unit) =
     IconButton(onClick = onClick) { Icon(Icons.Default.Info, contentDescription = "Why this helps", tint = TextMuted) }
-
-private fun trimmed(d: Double) = if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()

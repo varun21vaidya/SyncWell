@@ -26,17 +26,19 @@ import com.example.viewmodel.SyncWellViewModel
 @Composable
 fun OverlayScreen(overlay: Overlay, viewModel: SyncWellViewModel, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Background).testTag("overlay_${overlay.name}")) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.testTag("overlay_back")) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+        if (overlay != Overlay.JOURNEY) { // the Journey draws its own back arrow over the map
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack, modifier = Modifier.testTag("overlay_back")) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                }
+                Text(overlay.title, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
             }
-            Text(overlay.title, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
         }
         Box(Modifier.weight(1f)) {
             when (overlay) {
                 Overlay.STATS -> AnalyticsScreen(viewModel = viewModel)
                 Overlay.GOALS -> TodosScreen(viewModel = viewModel)
-                Overlay.JOURNEY -> JourneyScreen(viewModel = viewModel)
+                Overlay.JOURNEY -> JourneyScreen(viewModel = viewModel, onBack = onBack)
             }
         }
     }

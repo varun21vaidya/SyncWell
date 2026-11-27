@@ -1748,6 +1748,13 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
 
     suspend fun goalProgress(goal: Goal): Double = journey.progressOf(goal)
 
+    /** Saves a weekly goal for the current calendar week. Returns what blocks it, or an empty list once saved. */
+    suspend fun saveWeeklyGoal(draft: CommitmentDraft): List<DraftError> {
+        val errors = CommitmentRules.validateWeekly(draft)
+        if (errors.isEmpty()) journey.saveGoal(CommitmentRules.toWeekly(draft, UUID.randomUUID().toString(), DayBoundaryManager.currentTargetDate.value))
+        return errors
+    }
+
     fun addGoalProgress(goalId: String, amount: Double, note: String?) {
         viewModelScope.launch { journey.addProgress(goalId, DayBoundaryManager.currentTargetDate.value, amount, note) }
     }
