@@ -28,10 +28,10 @@ data class JourneyDay(val date: String, val qualifies: Boolean, val vacation: Bo
 
 sealed class JourneyEvent {
     abstract val date: String
-    data class Step(override val date: String) : JourneyEvent()
+    data class Step(override val date: String, val region: Int, val day: Int) : JourneyEvent()
     data class Vacation(override val date: String) : JourneyEvent()
     data class FreezeUsed(override val date: String) : JourneyEvent()
-    data class Setback(override val date: String, val fromStep: Int, val toStep: Int) : JourneyEvent()
+    data class Setback(override val date: String, val region: Int, val fromStep: Int, val toStep: Int) : JourneyEvent()
     data class GateReached(override val date: String, val region: Int) : JourneyEvent()
 }
 
@@ -51,7 +51,7 @@ object JourneyRules {
         if (p.atGate) return JourneyAdvance(p, emptyList()) // waiting at the gate: more good days do not add steps
         val next = p.copy(stepInRegion = p.stepInRegion + 1)
         val events = buildList {
-            add(JourneyEvent.Step(date))
+            add(JourneyEvent.Step(date, next.regionIndex, next.stepInRegion))
             if (next.atGate) add(JourneyEvent.GateReached(date, next.regionIndex))
         }
         return JourneyAdvance(next, events)
@@ -63,7 +63,7 @@ object JourneyRules {
         if (p.regionIndex == 0) return JourneyAdvance(p, emptyList()) // Home Start has no penalties
         val back = JourneyRoute.checkpointOf(p.regionIndex)?.takeIf { p.stepInRegion >= it } ?: 0
         if (back == p.stepInRegion) return JourneyAdvance(p, emptyList())
-        return JourneyAdvance(p.copy(stepInRegion = back), listOf(JourneyEvent.Setback(date, p.stepInRegion, back)))
+        return JourneyAdvance(p.copy(stepInRegion = back), listOf(JourneyEvent.Setback(date, p.regionIndex, p.stepInRegion, back)))
     }
 
     /**

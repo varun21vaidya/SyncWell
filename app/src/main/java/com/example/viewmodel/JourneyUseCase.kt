@@ -17,6 +17,7 @@ import com.example.domain.JourneyDay
 import com.example.domain.JourneyEvent
 import com.example.domain.JourneyPosition
 import com.example.domain.JourneyRules
+import com.example.domain.TravelLog
 import com.example.domain.WeekKey
 import java.util.UUID
 
@@ -24,7 +25,9 @@ import java.util.UUID
  * Connects the pure Journey rules to the database: turning the journey on or off, catching up the days that have ended,
  * reviewing goals, crossing a gate and claiming a reward. Each write is one transaction.
  */
-class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) {
+private const val MAX_REFLECTION = 140
+
+class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao, private val regionName: (Int) -> String = { "Region ${it + 1}" }) {
 
     private fun JourneyState.position() = JourneyPosition(regionIndex, stepInRegion, freezeUsedWeekStart)
     private fun JourneyState.with(p: JourneyPosition) =
@@ -52,14 +55,30 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
             if (row != null || off) JourneyDay(date, row?.let { com.example.domain.DayCompletion.qualifies(it.routineCompletionPct) } ?: false, vacation = off) else null
         }
         dao.upsertJourneyState(state.with(position).copy(lastProcessedDate = last))
+        // fixed ids: replaying the same day can never write its line twice
+        dao.insertJourneyNotes(events.mapIndexedNotNull { i, e -> TravelLog.line(e, regionName)?.let { JourneyNote("auto-${e.date}-$i", e.date, "LOG", it) } })
         events
     }
 
     suspend fun saveGoal(goal: Goal) = dao.insertGoals(listOf(goal))
 
     /** Adds one dated progress entry (manual; focus time is added automatically for linked goals). */
-    suspend fun addProgress(goalId: String, date: String, amount: Double, note: String? = null) =
-        dao.insertGoalProgressEntry(GoalProgress(UUID.randomUUID().toString(), goalId, date, amount, note?.takeIf { it.isNotBlank() }))
+    suspend fun addProgress(goalId: String, date: String, amount: Double, note: String? = null) {
+        val clean = note?.trim()?.takeIf { it.isNotEmpty() }
+        val id = UUID.randomUUID().toString()
+        dao.insertGoalProgressEntry(GoalProgress(id, goalId, date, amount, clean))
+        if (clean != null) {
+            val title = dao.getAllGoals().firstOrNull { it.id == goalId }?.title ?: return
+            dao.insertJourneyNotes(listOf(JourneyNote("progress-$id", date, "LOG", TravelLog.progress(title, clean))))
+        }
+    }
+
+    /** One optional line at a region's camp, kept in the travel log. One per region: writing it again replaces it. Returns false for an empty line. */
+    suspend fun saveReflection(region: Int, text: String, today: String): Boolean {
+        val clean = text.trim().take(MAX_REFLECTION).trimEnd().ifEmpty { return false }
+        dao.insertJourneyNotes(listOf(JourneyNote("camp-$region", today, "REFLECTION", clean)))
+        return true
+    }
 
     private fun Goal.spec() = GoalSpec(id, GoalMeasure.valueOf(measure), target, windowStart, windowEnd, GoalStatus.valueOf(status))
 
@@ -100,8 +119,9 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
         val updated = goal.copy(status = status.name)
         dao.insertGoals(listOf(updated))
         if (goal.kind == "COMMITMENT") {
-            if (status == GoalStatus.MET) dao.insertPassportStamps(listOf(PassportStamp("commit-${goal.id}", "COMMITMENT", goal.regionIndex ?: 0, today, goal.title)))
-            else sendBackToRegionStart(goal)
+            val met = status == GoalStatus.MET
+            if (met) dao.insertPassportStamps(listOf(PassportStamp("commit-${goal.id}", "COMMITMENT", goal.regionIndex ?: 0, today, goal.title))) else sendBackToRegionStart(goal)
+            dao.insertJourneyNotes(listOf(JourneyNote("goal-${goal.id}", today, "LOG", if (met) TravelLog.metCommitment(goal.title) else TravelLog.missedCommitment(goal.title))))
         }
         return updated
     }
@@ -120,6 +140,7 @@ class JourneyUseCase(private val db: AppDatabase, private val dao: SyncWellDao) 
         val s = dao.getJourneyState()?.takeIf { it.enabled } ?: return@withTransaction false
         val next = JourneyRules.crossGate(s.position(), commitmentsMet(s.regionIndex)) ?: return@withTransaction false
         dao.upsertJourneyState(s.with(next))
+        dao.insertJourneyNotes(listOf(JourneyNote("cross-${s.regionIndex}", today, "LOG", TravelLog.crossed(regionName))))
         dao.insertPassportStamps(listOf(PassportStamp("region-${s.regionIndex}", "REGION", s.regionIndex, today, regionName))) // a fixed id, so crossing twice cannot stamp twice
         true
     }

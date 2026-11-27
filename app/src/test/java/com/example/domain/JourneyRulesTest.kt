@@ -21,7 +21,7 @@ class JourneyRulesTest {
     @Test fun aQualifyingDayAddsOneStep() {
         val r = JourneyRules.advance(at(1, 2), good("2026-11-23"))
         assertEquals(3, r.position.stepInRegion)
-        assertEquals(listOf<JourneyEvent>(JourneyEvent.Step("2026-11-23")), r.events)
+        assertEquals(listOf<JourneyEvent>(JourneyEvent.Step("2026-11-23", 1, 3)), r.events)
     }
 
     @Test fun reachingTheLastStepReportsTheGateAndMoreGoodDaysWaitThere() {
@@ -53,7 +53,7 @@ class JourneyRulesTest {
     @Test fun withNoFreezeLeftAMissedDayGoesBackToTheCheckpoint() {
         val r = JourneyRules.advance(at(2, 9, freezeWeek = "2026-11-23"), bad("2026-11-26"))
         assertEquals(7, r.position.stepInRegion)
-        assertEquals(listOf<JourneyEvent>(JourneyEvent.Setback("2026-11-26", 9, 7)), r.events)
+        assertEquals(listOf<JourneyEvent>(JourneyEvent.Setback("2026-11-26", 2, 9, 7)), r.events)
     }
 
     @Test fun beforeTheCheckpointAMissedDayGoesBackToTheRegionStart() {
@@ -101,7 +101,7 @@ class JourneyRulesTest {
         val (p, events, last) = JourneyRules.catchUp(at(2, 9), "2026-11-22", "2026-11-27") { null }
         assertEquals(7, p.stepInRegion)
         assertEquals("2026-11-26", last)
-        assertEquals(listOf<JourneyEvent>(JourneyEvent.FreezeUsed("2026-11-23"), JourneyEvent.Setback("2026-11-24", 9, 7)), events)
+        assertEquals(listOf<JourneyEvent>(JourneyEvent.FreezeUsed("2026-11-23"), JourneyEvent.Setback("2026-11-24", 2, 9, 7)), events)
     }
 
     @Test fun processingInOneGoOrInStagesGivesTheSamePosition() {

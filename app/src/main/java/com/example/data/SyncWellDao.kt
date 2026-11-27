@@ -532,6 +532,9 @@ interface SyncWellDao {
     @Query("SELECT * FROM journey_notes")
     suspend fun getAllJourneyNotes(): List<JourneyNote>
 
+    @Query("SELECT * FROM journey_notes ORDER BY date DESC, id DESC")
+    fun getJourneyNotesFlow(): Flow<List<JourneyNote>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertJourneyNotes(notes: List<JourneyNote>)
 }

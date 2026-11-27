@@ -2,6 +2,7 @@ package com.example.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -36,6 +37,7 @@ import com.example.domain.JourneyMap
 import com.example.domain.RegionDef
 import com.example.domain.RegionView
 import com.example.domain.SetbackNote
+import com.example.domain.TravelLog
 import kotlinx.coroutines.delay
 import com.example.service.DayBoundaryManager
 import com.example.ui.theme.*
@@ -49,7 +51,14 @@ fun JourneyScreen(viewModel: SyncWellViewModel) {
     val context = LocalContext.current
     val regions = remember { JourneyMap.parse(context.resources.openRawResource(R.raw.adventure_route).bufferedReader().use { it.readText() }) }
     var editing by remember { mutableStateOf(false) }
+    var showLog by remember { mutableStateOf(false) }
     val s = state
+    if (showLog) {
+        val notes by viewModel.journeyNotes.collectAsState()
+        BackHandler { showLog = false }
+        TravelLogScreen(notes) { showLog = false }
+        return
+    }
 
     if (editing && s != null) {
         CommitmentEditor(s.regionIndex, goals.filter { it.kind == "COMMITMENT" }, onSave = { viewModel.saveCommitment(it) }, onClose = { editing = false })
@@ -57,7 +66,7 @@ fun JourneyScreen(viewModel: SyncWellViewModel) {
     }
     Column(Modifier.fillMaxSize().background(Background).verticalScroll(rememberScrollState()).padding(16.dp).testTag("journey_screen"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (s == null || !s.enabled) JourneyStart(s?.characterId, resuming = s != null) { id -> viewModel.setJourneyEnabled(true, id) }
-        else JourneyTrail(viewModel, s, regions, goals, onAddCommitment = { editing = true })
+        else JourneyTrail(viewModel, s, regions, goals, onAddCommitment = { editing = true }, onOpenLog = { showLog = true })
     }
 }
 
@@ -83,7 +92,7 @@ internal fun JourneyStart(characterId: String?, resuming: Boolean, onStart: (Str
 }
 
 @Composable
-private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onAddCommitment: () -> Unit) {
+private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions: List<RegionDef>, goals: List<Goal>, onAddCommitment: () -> Unit, onOpenLog: () -> Unit) {
     val today by DayBoundaryManager.currentTargetDate.collectAsState()
     val seen by viewModel.journeySeenReviews.collectAsState()
     val region = regions.getOrNull(s.regionIndex) // null once the Summit gate is crossed and no later region is bundled yet
@@ -96,9 +105,15 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
         JourneyMapCard(region, walk.shownStep, JourneyCharacters.byId(s.characterId))
         if (s.stepInRegion >= region.steps) WardenCard(region, commitments, s.ambitionText, s.identityText) { viewModel.crossJourneyGate(region.name) }
         CommitmentsCard(viewModel, commitments, canAdd = s.regionIndex > 0, onAdd = onAddCommitment)
+        val camp = TravelLog.campDay(region)
+        if (camp != null && s.stepInRegion >= camp) {
+            val notes by viewModel.journeyNotes.collectAsState()
+            CampReflectionCard(region.name, notes.firstOrNull { it.id == "camp-${s.regionIndex}" }) { viewModel.saveCampReflection(s.regionIndex, it) }
+        }
     }
     val passport by viewModel.journeyPassport.collectAsState()
     PassportCard(passport, regions)
+    TextButton(onClick = onOpenLog, modifier = Modifier.testTag("journey_open_log")) { Text("Open the travel log", color = Progress) }
     var editingWhy by remember { mutableStateOf(false) }
     AmbitionCard(s) { editingWhy = true }
     val reminders by viewModel.journeyReminders.collectAsState()

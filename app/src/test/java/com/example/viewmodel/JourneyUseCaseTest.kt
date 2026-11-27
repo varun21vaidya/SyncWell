@@ -127,7 +127,7 @@ class JourneyUseCaseTest {
         assertTrue(journey.claimReward("g", "2026-11-27"))
         assertFalse(journey.claimReward("g", "2026-11-28"))
         assertEquals("2026-11-27", dao.getAllGoals().single().rewardClaimedAt)
-        assertEquals("Claimed: Burger", dao.getAllJourneyNotes().single().text)
+        assertEquals(1, dao.getAllJourneyNotes().count { it.text == "Claimed: Burger" })
     }
 
     @Test fun theAmbitionIsOptionalCleanedAndStartsItsOwnClockOnlyWhenItChanges() = runBlocking {
@@ -148,6 +148,45 @@ class JourneyUseCaseTest {
     @Test fun savingAnAmbitionBeforeTheJourneyExistsChangesNothing() = runBlocking {
         journey.saveAmbition("x", "y", "2026-11-24")
         assertNull(dao.getJourneyState())
+    }
+
+    @Test fun syncWritesTheTravelLogOnceEvenIfTheSameDaysAreReplayed() = runBlocking {
+        day("2026-11-23", 1.0); day("2026-11-24", 1.0)
+        journey.enable("2026-11-23", "max")
+        journey.sync("2026-11-25")
+        val lines = dao.getAllJourneyNotes().filter { it.kind == "LOG" }.map { it.text }.sorted()
+        assertEquals(listOf("Day 1 of Region 1", "Day 2 of Region 1"), lines)
+        dao.upsertJourneyState(dao.getJourneyState()!!.copy(lastProcessedDate = "2026-11-22")) // the same days are processed again
+        dao.upsertJourneyState(dao.getJourneyState()!!.copy(stepInRegion = 0))
+        journey.sync("2026-11-25")
+        assertEquals(2, dao.getAllJourneyNotes().size) // fixed ids: replaced, not doubled
+    }
+
+    @Test fun aProgressNoteGoesIntoTheLogButAnEmptyOneDoesNot() = runBlocking {
+        journey.saveGoal(goal("g", 2))
+        journey.addProgress("g", "2026-11-24", 2.0, "  two easy ones ")
+        journey.addProgress("g", "2026-11-25", 1.0, "   ")
+        assertEquals(listOf("g: two easy ones"), dao.getAllJourneyNotes().map { it.text })
+        assertEquals(3.0, journey.progressOf(dao.getAllGoals().single()), 0.0)
+    }
+
+    @Test fun decidedCommitmentsAndGateCrossingsAreLogged() = runBlocking {
+        journey.enable("2026-11-23", "max")
+        dao.upsertJourneyState(dao.getJourneyState()!!.copy(regionIndex = 2, stepInRegion = 14))
+        journey.saveGoal(goal("hit", 2)); journey.saveGoal(goal("miss", 2, target = 99.0))
+        journey.addProgress("hit", "2026-11-24", 3.0)
+        journey.review("2026-12-02")
+        val text = dao.getAllJourneyNotes().map { it.text }.toSet()
+        assertTrue(text.containsAll(setOf("Met: hit", "Not met: miss")))
+    }
+
+    @Test fun theCampReflectionIsOneLinePerRegionAndReplacesItself() = runBlocking {
+        assertFalse(journey.saveReflection(2, "   ", "2026-11-26")) // nothing to keep
+        assertTrue(journey.saveReflection(2, " Mornings work better ", "2026-11-26"))
+        assertTrue(journey.saveReflection(2, "Evenings are better", "2026-11-27"))
+        val note = dao.getAllJourneyNotes().single()
+        assertEquals("REFLECTION", note.kind); assertEquals("Evenings are better", note.text); assertEquals("2026-11-27", note.date)
+        assertEquals(140, run { journey.saveReflection(3, "x".repeat(500), "2026-11-28"); dao.getAllJourneyNotes().first { it.id == "camp-3" }.text.length })
     }
 }
 

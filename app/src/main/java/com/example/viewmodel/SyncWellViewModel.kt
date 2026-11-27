@@ -1665,7 +1665,16 @@ class SyncWellViewModel(application: Application) : AndroidViewModel(application
     fun deleteRoutineTemplate(id: String) { viewModelScope.launch { dao.deleteRoutineTemplate(id) } }
 
     // JOURNEY (see JourneyRules and JourneyUseCase)
-    private val journey = JourneyUseCase(db, dao)
+    private val journeyRegions: List<RegionDef> by lazy {
+        JourneyMap.parse(getApplication<Application>().resources.openRawResource(com.example.R.raw.adventure_route).bufferedReader().use { it.readText() })
+    }
+    private val journey = JourneyUseCase(db, dao) { index -> journeyRegions.getOrNull(index)?.name ?: "Region ${index + 1}" }
+    val journeyNotes: StateFlow<List<JourneyNote>> = dao.getJourneyNotesFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** The one-line reflection at a region's camp. */
+    fun saveCampReflection(region: Int, text: String) {
+        viewModelScope.launch { journey.saveReflection(region, text, DayBoundaryManager.currentTargetDate.value) }
+    }
     val journeyState: StateFlow<JourneyState?> = dao.getJourneyStateFlow().stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val journeyPassport: StateFlow<List<PassportStamp>> = dao.getPassportFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val journeyGoals: StateFlow<List<Goal>> = dao.getGoalsFlow().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
