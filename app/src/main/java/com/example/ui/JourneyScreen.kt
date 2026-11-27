@@ -34,6 +34,9 @@ import com.example.data.JourneyState
 import com.example.domain.JourneyCharacter
 import com.example.domain.JourneyCharacters
 import com.example.domain.JourneyMap
+import com.example.domain.JourneyPosition
+import com.example.domain.JourneyRoute
+import com.example.domain.JourneyShare
 import com.example.domain.RegionDef
 import com.example.domain.RegionView
 import com.example.domain.SetbackNote
@@ -113,9 +116,19 @@ private fun JourneyTrail(viewModel: SyncWellViewModel, s: JourneyState, regions:
     }
     val passport by viewModel.journeyPassport.collectAsState()
     PassportCard(passport, regions)
+    val context = LocalContext.current
+    val shareRegion = regions.getOrNull(s.regionIndex)
+    if (shareRegion != null) {
+        TextButton(onClick = {
+            val position = JourneyPosition(s.regionIndex, s.stepInRegion)
+            JourneyShareCards.share(context, JourneyShare.journey(shareRegion, s.stepInRegion, position, passport.size, JourneyCharacters.byId(s.characterId).name), "my-journey.png", "Share my Journey")
+        }, modifier = Modifier.testTag("journey_share")) { Text("Share my Journey", color = Progress) }
+    }
     TextButton(onClick = onOpenLog, modifier = Modifier.testTag("journey_open_log")) { Text("Open the travel log", color = Progress) }
     var editingWhy by remember { mutableStateOf(false) }
-    AmbitionCard(s) { editingWhy = true }
+    AmbitionCard(s, onEdit = { editingWhy = true }, onShare = {
+        JourneyShareCards.share(context, JourneyShare.ambition(s, today, JourneyRoute.totalSteps(JourneyPosition(s.regionIndex, s.stepInRegion)), showReward = false), "my-ambition.png", "Share my ambition")
+    })
     val reminders by viewModel.journeyReminders.collectAsState()
     JourneyRemindersCard(reminders) { viewModel.saveJourneyReminders(it) }
     if (editingWhy) AmbitionDialog(s.ambitionText, s.identityText, onSave = { a, i -> viewModel.saveAmbition(a, i) }, onClose = { editingWhy = false })

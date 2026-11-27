@@ -22,10 +22,10 @@ import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 
 /** Draws a summary as an image and offers it to the system share sheet. Runs only on an explicit tap. */
 object ShareCard {
-    private const val W = 1080
-    private const val H = 1350
+    internal const val W = 1080
+    internal const val H = 1350
 
-    private fun base(): Pair<Bitmap, Canvas> {
+    internal fun base(): Pair<Bitmap, Canvas> {
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         canvas.drawColor(Color.parseColor("#05070D"))
@@ -34,7 +34,7 @@ object ShareCard {
         return bmp to canvas
     }
 
-    private fun Canvas.text(s: String, x: Float, y: Float, size: Float, color: String, bold: Boolean = false, center: Boolean = false) {
+    internal fun Canvas.text(s: String, x: Float, y: Float, size: Float, color: String, bold: Boolean = false, center: Boolean = false) {
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = Color.parseColor(color); textSize = size
             typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
@@ -73,7 +73,7 @@ object ShareCard {
 
     fun shareBadge(context: Context, badge: Badge) = send(context, renderBadge(badge), "my-medal.png", "Share my medal")
 
-    private fun send(context: Context, bmp: Bitmap, fileName: String, chooserTitle: String) {
+    internal fun send(context: Context, bmp: Bitmap, fileName: String, chooserTitle: String) {
         val dir = File(context.cacheDir, "share").apply { mkdirs() }
         val file = File(dir, fileName)
         file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }

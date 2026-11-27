@@ -44,7 +44,7 @@ class AmbitionFormTest {
 
     @Test fun theCardInvitesWhenEmptyAndShowsTheUsersWordsOtherwise() {
         var edits = 0
-        compose.setContent { MyApplicationTheme { AmbitionCard(JourneyState(enabled = true)) { edits++ } } }
+        compose.setContent { MyApplicationTheme { AmbitionCard(JourneyState(enabled = true), onEdit = { edits++ }) } }
         compose.onNodeWithTag("journey_ambition_edit").performClick()
         compose.waitForIdle()
         assertEquals(1, edits)

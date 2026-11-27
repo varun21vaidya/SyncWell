@@ -19,7 +19,7 @@ import com.example.ui.theme.*
 
 /** The Journey's "why", shown under the map: the user's own words, or a gentle invitation to write them. Both lines are optional. */
 @Composable
-fun AmbitionCard(state: JourneyState, onEdit: () -> Unit) {
+fun AmbitionCard(state: JourneyState, onEdit: () -> Unit, onShare: (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface1).padding(16.dp).testTag("journey_ambition"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Why you walk", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         if (state.ambitionText == null && state.identityText == null) {
@@ -27,7 +27,10 @@ fun AmbitionCard(state: JourneyState, onEdit: () -> Unit) {
         }
         state.ambitionText?.let { Text(it, color = TextPrimary, fontWeight = FontWeight.Bold) }
         state.identityText?.let { Text(it, color = TextSecondary, fontSize = 13.sp) }
-        TextButton(onClick = onEdit, modifier = Modifier.testTag("journey_ambition_edit")) { Text(if (state.ambitionText == null && state.identityText == null) "Write it" else "Edit") }
+        Row {
+            TextButton(onClick = onEdit, modifier = Modifier.testTag("journey_ambition_edit")) { Text(if (state.ambitionText == null && state.identityText == null) "Write it" else "Edit") }
+            if (onShare != null && state.ambitionText != null) TextButton(onClick = onShare, modifier = Modifier.testTag("journey_ambition_share")) { Text("Share") }
+        }
     }
 }
 

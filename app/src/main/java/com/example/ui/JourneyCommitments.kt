@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Goal
 import com.example.domain.CommitmentRules
+import com.example.domain.JourneyShare
 import com.example.ui.theme.*
 import com.example.viewmodel.SyncWellViewModel
 
@@ -51,6 +52,7 @@ private fun CommitmentRow(viewModel: SyncWellViewModel, g: Goal, refresh: Int, o
         Text("${trim(progress)} of ${trim(g.target)}${g.targetLabel?.let { " $it" } ?: ""}", color = TextSecondary, fontSize = 12.sp)
         g.rewardText?.let { RewardLine(viewModel, g, it) }
         if (g.status == "PENDING") TextButton(onClick = onLog, modifier = Modifier.testTag("journey_log_${g.id}")) { Text("Log progress") }
+        PromiseShare(g)
     }
 }
 
@@ -70,3 +72,20 @@ private fun statusText(g: Goal) = when (g.status) {
 }
 
 private fun trim(d: Double) = if (d % 1.0 == 0.0) d.toLong().toString() else "%.1f".format(java.util.Locale.US, d)
+
+/** Shares a commitment and its deadline with a friend. The reward stays hidden unless the switch is turned on. */
+@Composable
+private fun PromiseShare(g: Goal) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showReward by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = {
+            JourneyShareCards.share(context, JourneyShare.promise(g, showReward), "my-promise.png", "Share my promise")
+        }, modifier = Modifier.testTag("journey_promise_${g.id}")) { Text("Share as a promise") }
+        if (g.rewardText != null) {
+            Spacer(Modifier.weight(1f))
+            Text("Show reward", color = TextMuted, fontSize = 12.sp)
+            Switch(showReward, { showReward = it }, modifier = Modifier.padding(start = 8.dp).testTag("journey_promise_reward_${g.id}"))
+        }
+    }
+}
